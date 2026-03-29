@@ -7,7 +7,9 @@ import {
   Trash,
   PencilSimple,
   Carrot,
-  Clock
+  Clock,
+  CheckSquare,
+  X
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -44,6 +47,10 @@ export default function ComponentsPage() {
     notes: "" 
   });
   const [newIngredient, setNewIngredient] = useState({ ingredient_id: "", quantity: "", unit: "g" });
+  
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -121,6 +128,45 @@ export default function ComponentsPage() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.size} selected component(s)?`)) return;
+    
+    try {
+      await axios.post(`${API}/component-recipes/bulk-delete`, { ids: Array.from(selectedIds) });
+      toast.success(`Deleted ${selectedIds.size} component(s)`);
+      setSelectedIds(new Set());
+      setIsSelectionMode(false);
+      fetchData();
+    } catch (error) {
+      console.error("Error bulk deleting:", error);
+      toast.error("Failed to delete components");
+    }
+  };
+
+  const toggleSelection = (id) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredComponents.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredComponents.map(c => c.id)));
+    }
+  };
+
+  const cancelSelection = () => {
+    setSelectedIds(new Set());
+    setIsSelectionMode(false);
+  };
+
   const handleAddIngredientToComponent = () => {
     if (!newIngredient.ingredient_id || !newIngredient.quantity) {
       toast.error("Please select an ingredient and enter quantity");
@@ -163,72 +209,111 @@ export default function ComponentsPage() {
             {components.length} component{components.length !== 1 ? "s" : ""} (frostings, ganaches, fillings...)
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#2C1E16] hover:bg-[#3E2A1F] text-white" data-testid="add-component-btn">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Component
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-white border-[#E8E3D9]">
-            <DialogHeader>
-              <DialogTitle className="font-outfit">Create Component Recipe</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 mt-4">
-              <div>
-                <label className="form-label">Component Name *</label>
-                <Input
-                  value={newComponent.name}
-                  onChange={(e) => setNewComponent({ ...newComponent, name: e.target.value })}
-                  placeholder="e.g., Chocolate Ganache"
-                  className="form-input"
-                  data-testid="component-name-input"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">Batch Yield (grams)</label>
-                  <Input
-                    type="number"
-                    value={newComponent.batch_yield_grams}
-                    onChange={(e) => setNewComponent({ ...newComponent, batch_yield_grams: e.target.value })}
-                    placeholder="500"
-                    className="form-input"
-                    data-testid="component-yield-input"
-                  />
-                </div>
-                <div>
-                  <label className="form-label">Prep Time (minutes)</label>
-                  <Input
-                    type="number"
-                    value={newComponent.prep_time_minutes}
-                    onChange={(e) => setNewComponent({ ...newComponent, prep_time_minutes: e.target.value })}
-                    placeholder="30"
-                    className="form-input"
-                    data-testid="component-time-input"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="form-label">Notes</label>
-                <Input
-                  value={newComponent.notes}
-                  onChange={(e) => setNewComponent({ ...newComponent, notes: e.target.value })}
-                  placeholder="Optional notes..."
-                  className="form-input"
-                  data-testid="component-notes-input"
-                />
-              </div>
+        <div className="flex items-center gap-2">
+          {isSelectionMode ? (
+            <>
+              <span className="text-sm text-[#5C554D] mr-2">
+                {selectedIds.size} selected
+              </span>
               <Button 
-                onClick={handleCreateComponent}
-                className="w-full bg-[#2C1E16] hover:bg-[#3E2A1F] text-white"
-                data-testid="confirm-create-component"
+                onClick={handleBulkDelete}
+                disabled={selectedIds.size === 0}
+                className="bg-[#A63C3C] hover:bg-[#8B3333] text-white"
+                data-testid="bulk-delete-btn"
               >
-                Create Component
+                <Trash className="w-4 h-4 mr-2" />
+                Delete Selected
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+              <Button 
+                onClick={cancelSelection}
+                variant="outline"
+                className="border-[#E8E3D9]"
+                data-testid="cancel-selection-btn"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button 
+                onClick={() => setIsSelectionMode(true)}
+                variant="outline"
+                className="border-[#E8E3D9]"
+                data-testid="select-mode-btn"
+              >
+                <CheckSquare className="w-4 h-4 mr-2" />
+                Select
+              </Button>
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-[#2C1E16] hover:bg-[#3E2A1F] text-white" data-testid="add-component-btn">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Component
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-white border-[#E8E3D9]">
+                  <DialogHeader>
+                    <DialogTitle className="font-outfit">Create Component Recipe</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <div>
+                      <label className="form-label">Component Name *</label>
+                      <Input
+                        value={newComponent.name}
+                        onChange={(e) => setNewComponent({ ...newComponent, name: e.target.value })}
+                        placeholder="e.g., Chocolate Ganache"
+                        className="form-input"
+                        data-testid="component-name-input"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="form-label">Batch Yield (grams)</label>
+                        <Input
+                          type="number"
+                          value={newComponent.batch_yield_grams}
+                          onChange={(e) => setNewComponent({ ...newComponent, batch_yield_grams: e.target.value })}
+                          placeholder="500"
+                          className="form-input"
+                          data-testid="component-yield-input"
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label">Prep Time (minutes)</label>
+                        <Input
+                          type="number"
+                          value={newComponent.prep_time_minutes}
+                          onChange={(e) => setNewComponent({ ...newComponent, prep_time_minutes: e.target.value })}
+                          placeholder="30"
+                          className="form-input"
+                          data-testid="component-time-input"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="form-label">Notes</label>
+                      <Input
+                        value={newComponent.notes}
+                        onChange={(e) => setNewComponent({ ...newComponent, notes: e.target.value })}
+                        placeholder="Optional notes..."
+                        className="form-input"
+                        data-testid="component-notes-input"
+                      />
+                    </div>
+                    <Button 
+                      onClick={handleCreateComponent}
+                      className="w-full bg-[#2C1E16] hover:bg-[#3E2A1F] text-white"
+                      data-testid="confirm-create-component"
+                    >
+                      Create Component
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </>
+          )}
+        </div>
       </header>
       
       <div className="p-8">
@@ -258,72 +343,101 @@ export default function ComponentsPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredComponents.map((component, index) => (
-              <div 
-                key={component.id}
-                className={`card-flat p-6 animate-fade-in-up stagger-${(index % 5) + 1}`}
-                data-testid={`component-card-${component.id}`}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="w-12 h-12 rounded-lg bg-[#D99441]/10 flex items-center justify-center">
-                    <Flask className="w-6 h-6 text-[#D99441]" weight="duotone" />
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => { setSelectedComponent(component); setEditDialogOpen(true); }}
-                      className="h-8 w-8 p-0 hover:bg-[#F4F1EA]"
-                      data-testid={`edit-component-${component.id}`}
-                    >
-                      <PencilSimple className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteComponent(component.id)}
-                      className="h-8 w-8 p-0 hover:bg-[#A63C3C]/10 text-[#A63C3C]"
-                      data-testid={`delete-component-${component.id}`}
-                    >
-                      <Trash className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-                
-                <h3 className="font-outfit font-medium text-lg text-[#1A1A1A] mb-2">
-                  {component.name}
-                </h3>
-                
-                <div className="space-y-2 text-sm text-[#5C554D]">
-                  {component.batch_yield_grams > 0 && (
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono bg-[#F4F1EA] px-2 py-0.5 rounded">
-                        {component.batch_yield_grams}g
-                      </span>
-                      <span>per batch</span>
-                    </div>
-                  )}
-                  {component.prep_time_minutes > 0 && (
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      <span>{component.prep_time_minutes} min</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <Carrot className="w-4 h-4" />
-                    <span>{component.ingredients?.length || 0} ingredients</span>
-                  </div>
-                </div>
-                
-                {component.notes && (
-                  <p className="mt-3 text-sm text-[#5C554D] border-t border-[#E8E3D9] pt-3">
-                    {component.notes}
-                  </p>
-                )}
+          <>
+            {/* Select All in Selection Mode */}
+            {isSelectionMode && (
+              <div className="mb-4 flex items-center gap-3">
+                <Checkbox
+                  checked={selectedIds.size === filteredComponents.length && filteredComponents.length > 0}
+                  onCheckedChange={toggleSelectAll}
+                  data-testid="select-all-checkbox"
+                />
+                <span className="text-sm text-[#5C554D]">Select All</span>
               </div>
-            ))}
-          </div>
+            )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredComponents.map((component, index) => (
+                <div 
+                  key={component.id}
+                  className={`card-flat p-6 animate-fade-in-up stagger-${(index % 5) + 1} ${
+                    selectedIds.has(component.id) ? 'ring-2 ring-[#C57B57] bg-[#C57B57]/5' : ''
+                  } ${isSelectionMode ? 'cursor-pointer' : ''}`}
+                  onClick={() => isSelectionMode && toggleSelection(component.id)}
+                  data-testid={`component-card-${component.id}`}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      {isSelectionMode && (
+                        <Checkbox
+                          checked={selectedIds.has(component.id)}
+                          onCheckedChange={() => toggleSelection(component.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          data-testid={`select-component-${component.id}`}
+                        />
+                      )}
+                      <div className="w-12 h-12 rounded-lg bg-[#D99441]/10 flex items-center justify-center">
+                        <Flask className="w-6 h-6 text-[#D99441]" weight="duotone" />
+                      </div>
+                    </div>
+                    {!isSelectionMode && (
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => { setSelectedComponent(component); setEditDialogOpen(true); }}
+                          className="h-8 w-8 p-0 hover:bg-[#F4F1EA]"
+                          data-testid={`edit-component-${component.id}`}
+                        >
+                          <PencilSimple className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteComponent(component.id)}
+                          className="h-8 w-8 p-0 hover:bg-[#A63C3C]/10 text-[#A63C3C]"
+                          data-testid={`delete-component-${component.id}`}
+                        >
+                          <Trash className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <h3 className="font-outfit font-medium text-lg text-[#1A1A1A] mb-2">
+                    {component.name}
+                  </h3>
+                  
+                  <div className="space-y-2 text-sm text-[#5C554D]">
+                    {component.batch_yield_grams > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono bg-[#F4F1EA] px-2 py-0.5 rounded">
+                          {component.batch_yield_grams}g
+                        </span>
+                        <span>per batch</span>
+                      </div>
+                    )}
+                    {component.prep_time_minutes > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        <span>{component.prep_time_minutes} min</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Carrot className="w-4 h-4" />
+                      <span>{component.ingredients?.length || 0} ingredients</span>
+                    </div>
+                  </div>
+                  
+                  {component.notes && (
+                    <p className="mt-3 text-sm text-[#5C554D] border-t border-[#E8E3D9] pt-3">
+                      {component.notes}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
         )}
         
         {/* Edit Dialog */}

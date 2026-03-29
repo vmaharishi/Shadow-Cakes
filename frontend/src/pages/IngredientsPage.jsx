@@ -5,8 +5,10 @@ import {
   Plus, 
   MagnifyingGlass,
   Trash,
-  PencilSimple,
-  Storefront
+  Storefront,
+  CheckSquare,
+  Square,
+  X
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -46,6 +49,10 @@ export default function IngredientsPage() {
     purchase_date: new Date().toISOString().split('T')[0],
     notes: ""
   });
+  
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -98,6 +105,22 @@ export default function IngredientsPage() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.size} selected ingredient(s) and all their pricing records?`)) return;
+    
+    try {
+      await axios.post(`${API}/ingredients/bulk-delete`, { ids: Array.from(selectedIds) });
+      toast.success(`Deleted ${selectedIds.size} ingredient(s)`);
+      setSelectedIds(new Set());
+      setIsSelectionMode(false);
+      fetchData();
+    } catch (error) {
+      console.error("Error bulk deleting:", error);
+      toast.error("Failed to delete ingredients");
+    }
+  };
+
   const handleAddPrice = async () => {
     if (!newPrice.store_vendor || !newPrice.purchase_price || !newPrice.package_size) {
       toast.error("Please fill all required fields");
@@ -133,15 +156,27 @@ export default function IngredientsPage() {
     }
   };
 
-  const handleDeletePrice = async (priceId) => {
-    try {
-      await axios.delete(`${API}/ingredient-prices/${priceId}`);
-      toast.success("Price deleted");
-      fetchData();
-    } catch (error) {
-      console.error("Error deleting price:", error);
-      toast.error("Failed to delete price");
+  const toggleSelection = (id) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
     }
+    setSelectedIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredIngredients.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredIngredients.map(i => i.id)));
+    }
+  };
+
+  const cancelSelection = () => {
+    setSelectedIds(new Set());
+    setIsSelectionMode(false);
   };
 
   const getIngredientPrices = (ingredientId) => {
@@ -167,58 +202,97 @@ export default function IngredientsPage() {
             {ingredients.length} ingredient{ingredients.length !== 1 ? "s" : ""} in your master list
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#2C1E16] hover:bg-[#3E2A1F] text-white" data-testid="add-ingredient-btn">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Ingredient
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-white border-[#E8E3D9]">
-            <DialogHeader>
-              <DialogTitle className="font-outfit">Add New Ingredient</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 mt-4">
-              <div>
-                <label className="form-label">Ingredient Name *</label>
-                <Input
-                  value={newIngredient.name}
-                  onChange={(e) => setNewIngredient({ ...newIngredient, name: e.target.value })}
-                  placeholder="e.g., All-Purpose Flour"
-                  className="form-input"
-                  data-testid="ingredient-name-input"
-                />
-              </div>
-              <div>
-                <label className="form-label">Default Unit</label>
-                <Input
-                  value={newIngredient.default_unit}
-                  onChange={(e) => setNewIngredient({ ...newIngredient, default_unit: e.target.value })}
-                  placeholder="g"
-                  className="form-input"
-                  data-testid="ingredient-unit-input"
-                />
-              </div>
-              <div>
-                <label className="form-label">Notes</label>
-                <Input
-                  value={newIngredient.notes}
-                  onChange={(e) => setNewIngredient({ ...newIngredient, notes: e.target.value })}
-                  placeholder="Optional notes..."
-                  className="form-input"
-                  data-testid="ingredient-notes-input"
-                />
-              </div>
+        <div className="flex items-center gap-2">
+          {isSelectionMode ? (
+            <>
+              <span className="text-sm text-[#5C554D] mr-2">
+                {selectedIds.size} selected
+              </span>
               <Button 
-                onClick={handleCreateIngredient}
-                className="w-full bg-[#2C1E16] hover:bg-[#3E2A1F] text-white"
-                data-testid="confirm-create-ingredient"
+                onClick={handleBulkDelete}
+                disabled={selectedIds.size === 0}
+                className="bg-[#A63C3C] hover:bg-[#8B3333] text-white"
+                data-testid="bulk-delete-btn"
               >
-                Add Ingredient
+                <Trash className="w-4 h-4 mr-2" />
+                Delete Selected
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+              <Button 
+                onClick={cancelSelection}
+                variant="outline"
+                className="border-[#E8E3D9]"
+                data-testid="cancel-selection-btn"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button 
+                onClick={() => setIsSelectionMode(true)}
+                variant="outline"
+                className="border-[#E8E3D9]"
+                data-testid="select-mode-btn"
+              >
+                <CheckSquare className="w-4 h-4 mr-2" />
+                Select
+              </Button>
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-[#2C1E16] hover:bg-[#3E2A1F] text-white" data-testid="add-ingredient-btn">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Ingredient
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-white border-[#E8E3D9]">
+                  <DialogHeader>
+                    <DialogTitle className="font-outfit">Add New Ingredient</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <div>
+                      <label className="form-label">Ingredient Name *</label>
+                      <Input
+                        value={newIngredient.name}
+                        onChange={(e) => setNewIngredient({ ...newIngredient, name: e.target.value })}
+                        placeholder="e.g., All-Purpose Flour"
+                        className="form-input"
+                        data-testid="ingredient-name-input"
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">Default Unit</label>
+                      <Input
+                        value={newIngredient.default_unit}
+                        onChange={(e) => setNewIngredient({ ...newIngredient, default_unit: e.target.value })}
+                        placeholder="g"
+                        className="form-input"
+                        data-testid="ingredient-unit-input"
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">Notes</label>
+                      <Input
+                        value={newIngredient.notes}
+                        onChange={(e) => setNewIngredient({ ...newIngredient, notes: e.target.value })}
+                        placeholder="Optional notes..."
+                        className="form-input"
+                        data-testid="ingredient-notes-input"
+                      />
+                    </div>
+                    <Button 
+                      onClick={handleCreateIngredient}
+                      className="w-full bg-[#2C1E16] hover:bg-[#3E2A1F] text-white"
+                      data-testid="confirm-create-ingredient"
+                    >
+                      Add Ingredient
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </>
+          )}
+        </div>
       </header>
       
       <div className="p-8">
@@ -252,12 +326,23 @@ export default function IngredientsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-[#E8E3D9] hover:bg-transparent">
+                  {isSelectionMode && (
+                    <TableHead className="table-header-cell w-12">
+                      <Checkbox
+                        checked={selectedIds.size === filteredIngredients.length && filteredIngredients.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                        data-testid="select-all-checkbox"
+                      />
+                    </TableHead>
+                  )}
                   <TableHead className="table-header-cell">Ingredient</TableHead>
                   <TableHead className="table-header-cell">Unit</TableHead>
                   <TableHead className="table-header-cell">Latest Price</TableHead>
                   <TableHead className="table-header-cell">Store/Vendor</TableHead>
                   <TableHead className="table-header-cell text-right">Unit Cost</TableHead>
-                  <TableHead className="table-header-cell w-24">Actions</TableHead>
+                  {!isSelectionMode && (
+                    <TableHead className="table-header-cell w-24">Actions</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -266,7 +351,20 @@ export default function IngredientsPage() {
                   const priceCount = getIngredientPrices(ingredient.id).length;
                   
                   return (
-                    <TableRow key={ingredient.id} className="table-row" data-testid={`ingredient-row-${ingredient.id}`}>
+                    <TableRow 
+                      key={ingredient.id} 
+                      className={`table-row ${selectedIds.has(ingredient.id) ? 'bg-[#C57B57]/5' : ''}`}
+                      data-testid={`ingredient-row-${ingredient.id}`}
+                    >
+                      {isSelectionMode && (
+                        <TableCell className="table-cell">
+                          <Checkbox
+                            checked={selectedIds.has(ingredient.id)}
+                            onCheckedChange={() => toggleSelection(ingredient.id)}
+                            data-testid={`select-ingredient-${ingredient.id}`}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="table-cell font-medium">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded bg-[#C57B57]/10 flex items-center justify-center">
@@ -310,28 +408,30 @@ export default function IngredientsPage() {
                           "-"
                         )}
                       </TableCell>
-                      <TableCell className="table-cell">
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => { setSelectedIngredient(ingredient); setPriceDialogOpen(true); }}
-                            className="h-8 w-8 p-0 hover:bg-[#F4F1EA]"
-                            data-testid={`add-price-${ingredient.id}`}
-                          >
-                            <Plus className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteIngredient(ingredient.id)}
-                            className="h-8 w-8 p-0 hover:bg-[#A63C3C]/10 text-[#A63C3C]"
-                            data-testid={`delete-ingredient-${ingredient.id}`}
-                          >
-                            <Trash className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      {!isSelectionMode && (
+                        <TableCell className="table-cell">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => { setSelectedIngredient(ingredient); setPriceDialogOpen(true); }}
+                              className="h-8 w-8 p-0 hover:bg-[#F4F1EA]"
+                              data-testid={`add-price-${ingredient.id}`}
+                            >
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteIngredient(ingredient.id)}
+                              className="h-8 w-8 p-0 hover:bg-[#A63C3C]/10 text-[#A63C3C]"
+                              data-testid={`delete-ingredient-${ingredient.id}`}
+                            >
+                              <Trash className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   );
                 })}

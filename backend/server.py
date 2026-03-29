@@ -670,8 +670,8 @@ async def import_recipes(file: UploadFile = File(...)):
 @api_router.post("/import/packaging")
 async def import_packaging(file: UploadFile = File(...)):
     """
-    Import packaging from Excel.
-    Expected columns: name, unit_cost, unit, notes
+    Import packaging from Excel (same format as ingredients).
+    Expected columns: packaging_name, store_vendor, purchase_price, package_size, unit, purchase_date, notes
     """
     if not file.filename.endswith(('.xlsx', '.xls')):
         raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx)")
@@ -681,7 +681,7 @@ async def import_packaging(file: UploadFile = File(...)):
     ws = wb.active
     
     headers = [cell.value.lower().strip() if cell.value else "" for cell in ws[1]]
-    required = ["name", "unit_cost"]
+    required = ["packaging_name", "store_vendor", "purchase_price", "package_size", "unit"]
     missing = [r for r in required if r not in headers]
     if missing:
         raise HTTPException(status_code=400, detail=f"Missing required columns: {missing}")
@@ -696,13 +696,18 @@ async def import_packaging(file: UploadFile = File(...)):
         try:
             row_dict = {headers[i]: row[i] for i in range(len(headers)) if i < len(row)}
             
-            name = str(row_dict.get("name", "")).strip()
+            name = str(row_dict.get("packaging_name", "")).strip()
             if not name:
                 continue
             
+            # Calculate unit cost from purchase_price / package_size
+            purchase_price = float(row_dict.get("purchase_price", 0) or 0)
+            package_size = float(row_dict.get("package_size", 1) or 1)
+            unit_cost = purchase_price / package_size if package_size > 0 else purchase_price
+            
             packaging = Packaging(
                 name=name,
-                unit_cost=float(row_dict.get("unit_cost", 0) or 0),
+                unit_cost=unit_cost,
                 unit=str(row_dict.get("unit", "piece") or "piece"),
                 notes=str(row_dict.get("notes", "") or "")
             )
@@ -717,6 +722,41 @@ async def import_packaging(file: UploadFile = File(...)):
         "packaging_added": items_added,
         "errors": errors[:10] if errors else []
     }
+
+# ---------- BULK DELETE ENDPOINTS ----------
+class BulkDeleteRequest(BaseModel):
+    ids: List[str]
+
+@api_router.post("/ingredients/bulk-delete")
+async def bulk_delete_ingredients(request: BulkDeleteRequest):
+    """Delete multiple ingredients and their prices"""
+    deleted_count = 0
+    for ing_id in request.ids:
+        result = await db.ingredients.delete_one({"id": ing_id})
+        if result.deleted_count > 0:
+            deleted_count += 1
+            await db.ingredient_prices.delete_many({"ingredient_id": ing_id})
+    return {"status": "success", "deleted_count": deleted_count}
+
+@api_router.post("/packaging/bulk-delete")
+async def bulk_delete_packaging(request: BulkDeleteRequest):
+    """Delete multiple packaging items"""
+    deleted_count = 0
+    for pkg_id in request.ids:
+        result = await db.packaging.delete_one({"id": pkg_id})
+        if result.deleted_count > 0:
+            deleted_count += 1
+    return {"status": "success", "deleted_count": deleted_count}
+
+@api_router.post("/component-recipes/bulk-delete")
+async def bulk_delete_components(request: BulkDeleteRequest):
+    """Delete multiple component recipes"""
+    deleted_count = 0
+    for comp_id in request.ids:
+        result = await db.component_recipes.delete_one({"id": comp_id})
+        if result.deleted_count > 0:
+            deleted_count += 1
+    return {"status": "success", "deleted_count": deleted_count}
 
 @api_router.post("/import/components")
 async def import_component_recipes(file: UploadFile = File(...)):

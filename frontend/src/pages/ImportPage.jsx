@@ -325,10 +325,10 @@ export default function ImportPage() {
           <TabsContent value="packaging">
             <ImportSection
               title="Import Packaging"
-              description="Upload your packaging items spreadsheet."
+              description="Upload your packaging items spreadsheet. Same format as ingredients - unit cost is calculated from purchase_price / package_size."
               endpoint="/import/packaging"
               icon={Package}
-              columns={["name", "unit_cost", "unit", "notes"]}
+              columns={["packaging_name", "store_vendor", "purchase_price", "package_size", "unit", "purchase_date", "notes"]}
               templateName="packaging"
             />
           </TabsContent>
