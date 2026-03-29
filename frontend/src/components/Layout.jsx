@@ -6,8 +6,7 @@ import {
   Package, 
   Flask, 
   Upload, 
-  Gear,
-  Cookie
+  Gear
 } from "@phosphor-icons/react";
 
 const navItems = [
@@ -27,9 +26,11 @@ export default function Layout() {
       <aside className="sidebar w-64 flex-shrink-0 fixed h-full" data-testid="sidebar">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-lg bg-[#2C1E16] flex items-center justify-center">
-              <Cookie className="w-6 h-6 text-white" weight="duotone" />
-            </div>
+            <img 
+              src="https://customer-assets.emergentagent.com/job_recipe-costing-19/artifacts/bhoi6cdl_Shadow%20Logo-Cream.jpg" 
+              alt="Shadow Cakes" 
+              className="w-10 h-10 rounded-lg object-cover"
+            />
             <div>
               <h1 className="font-outfit font-semibold text-lg text-[#1A1A1A] tracking-tight">
                 Shadow Cakes
