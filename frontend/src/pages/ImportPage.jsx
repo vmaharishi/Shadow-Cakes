@@ -306,7 +306,7 @@ export default function ImportPage() {
               description="Upload your ingredient pricing spreadsheet. This will create ingredients and their vendor prices."
               endpoint="/import/ingredients"
               icon={Carrot}
-              columns={["ingredient_name", "store_vendor", "purchase_price", "package_size", "unit", "purchase_date", "notes"]}
+              columns={["ingredient_name", "store_vendor", "purchase_price", "package_size", "unit", "purchase_date", "brand"]}
               templateName="ingredient_pricing"
             />
           </TabsContent>

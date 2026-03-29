@@ -489,7 +489,7 @@ async def calculate_variant_cost(recipe_id: str, variant_id: str, selling_price:
 async def import_ingredient_pricing(file: UploadFile = File(...)):
     """
     Import ingredient pricing from Excel.
-    Expected columns: ingredient_name, store_vendor, purchase_price, package_size, unit, purchase_date, notes
+    Expected columns: ingredient_name, store_vendor, purchase_price, package_size, unit, purchase_date, brand
     """
     if not file.filename.endswith(('.xlsx', '.xls')):
         raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx)")
@@ -549,7 +549,7 @@ async def import_ingredient_pricing(file: UploadFile = File(...)):
                 unit_cost=unit_cost,
                 purchase_date=purchase_date,
                 is_latest=True,
-                notes=str(row_dict.get("notes", "") or "")
+                notes=str(row_dict.get("brand", "") or "")
             )
             await db.ingredient_prices.insert_one(price.model_dump())
             prices_added += 1
