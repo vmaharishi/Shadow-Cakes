@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { 
-  CookingPot, 
+  Cake, 
   Plus, 
   MagnifyingGlass,
   DotsThreeVertical,
@@ -208,7 +208,7 @@ export default function RecipesPage() {
           <div className="text-center py-12 text-[#5C554D]">Loading...</div>
         ) : filteredRecipes.length === 0 ? (
           <div className="empty-state">
-            <CookingPot className="empty-state-icon" weight="duotone" />
+            <Cake className="empty-state-icon" weight="duotone" />
             <h3 className="empty-state-title">No recipes yet</h3>
             <p className="empty-state-description">
               Create your first recipe or import recipes from an Excel spreadsheet.
@@ -225,7 +225,7 @@ export default function RecipesPage() {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="w-12 h-12 rounded-lg bg-[#2C1E16]/10 flex items-center justify-center">
-                    <CookingPot className="w-6 h-6 text-[#2C1E16]" weight="duotone" />
+                    <Cake className="w-6 h-6 text-[#2C1E16]" weight="duotone" />
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>

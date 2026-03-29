@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { 
   House, 
-  CookingPot, 
+  Cake, 
   Carrot, 
   Package, 
   Flask, 
@@ -12,7 +12,7 @@ import {
 
 const navItems = [
   { path: "/", label: "Dashboard", icon: House },
-  { path: "/recipes", label: "Recipes", icon: CookingPot },
+  { path: "/recipes", label: "Recipes", icon: Cake },
   { path: "/ingredients", label: "Ingredients", icon: Carrot },
   { path: "/packaging", label: "Packaging", icon: Package },
   { path: "/components", label: "Components", icon: Flask },

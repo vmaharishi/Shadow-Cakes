@@ -8,7 +8,7 @@ import {
   Warning,
   DownloadSimple,
   Carrot,
-  CookingPot,
+  Cake,
   Package,
   Flask
 } from "@phosphor-icons/react";
@@ -279,7 +279,7 @@ export default function ImportPage() {
               className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-4"
               data-testid="tab-import-recipes"
             >
-              <CookingPot className="w-4 h-4 mr-2" />
+              <Cake className="w-4 h-4 mr-2" />
               Recipes
             </TabsTrigger>
             <TabsTrigger 
@@ -316,7 +316,7 @@ export default function ImportPage() {
               title="Import Recipes"
               description="Upload your recipes spreadsheet. Each row represents an ingredient in a recipe variant."
               endpoint="/import/recipes"
-              icon={CookingPot}
+              icon={Cake}
               columns={["recipe_name", "variant_name", "ingredient_name", "quantity", "unit", "prep_time_minutes", "category", "notes"]}
               templateName="recipes"
             />

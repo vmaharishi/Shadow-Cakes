@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { 
-  CookingPot, 
+  Cake, 
   Carrot, 
   Package, 
   Flask,
@@ -51,7 +51,7 @@ export default function Dashboard() {
     { 
       label: "Recipes", 
       value: stats.recipes, 
-      icon: CookingPot, 
+      icon: Cake, 
       link: "/recipes",
       color: "#2C1E16"
     },
