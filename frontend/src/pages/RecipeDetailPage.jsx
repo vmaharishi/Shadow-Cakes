@@ -179,14 +179,14 @@ export default function RecipeDetailPage() {
     await handleSaveRecipe({ ...recipe, variants: updatedVariants });
   };
 
-  const handleVendorOverride = async (ingredientLineId, vendorName) => {
+  const handleVendorOverride = async (ingredientLineId, priceId) => {
     const updatedVariants = recipe.variants.map(v => {
       if (v.id === selectedVariantId) {
         return {
           ...v,
           ingredients: v.ingredients.map(i => {
             if (i.id === ingredientLineId) {
-              return { ...i, store_vendor_override: vendorName === "default" ? null : vendorName };
+              return { ...i, price_id_override: priceId === "default" ? null : priceId };
             }
             return i;
           })
@@ -322,10 +322,13 @@ export default function RecipeDetailPage() {
     setEditingPrepTime(false);
   };
 
-  const getVendorsForIngredient = (ingredientId) => {
-    return ingredientPrices
-      .filter(p => p.ingredient_id === ingredientId)
-      .map(p => p.store_vendor);
+  const getPricesForIngredient = (ingredientId) => {
+    return ingredientPrices.filter(p => p.ingredient_id === ingredientId);
+  };
+
+  const formatPriceOption = (price) => {
+    const brand = price.notes ? ` - ${price.notes}` : '';
+    return `${price.store_vendor}${brand}`;
   };
 
   if (loading) {
@@ -581,30 +584,32 @@ export default function RecipeDetailPage() {
                         </thead>
                         <tbody>
                           {selectedVariant.ingredients?.map((item) => {
-                            const vendors = getVendorsForIngredient(item.ingredient_id);
+                            const prices = getPricesForIngredient(item.ingredient_id);
                             return (
                               <tr key={item.id} className="table-row">
                                 <td className="table-cell font-medium">{item.ingredient_name}</td>
                                 <td className="table-cell-numeric">{item.quantity}</td>
                                 <td className="table-cell">{item.unit}</td>
                                 <td className="table-cell">
-                                  {vendors.length > 0 ? (
+                                  {prices.length > 0 ? (
                                     <div className="flex items-center gap-2">
                                       <Select 
-                                        value={item.store_vendor_override || "default"} 
+                                        value={item.price_id_override || "default"} 
                                         onValueChange={(v) => handleVendorOverride(item.id, v)}
                                       >
-                                        <SelectTrigger className="h-8 text-xs border-[#E8E3D9]" data-testid={`vendor-select-${item.id}`}>
+                                        <SelectTrigger className="h-8 text-xs border-[#E8E3D9] min-w-[180px]" data-testid={`vendor-select-${item.id}`}>
                                           <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent className="bg-white border-[#E8E3D9]">
                                           <SelectItem value="default">Latest Price</SelectItem>
-                                          {vendors.map((v) => (
-                                            <SelectItem key={v} value={v}>{v}</SelectItem>
+                                          {prices.map((p) => (
+                                            <SelectItem key={p.id} value={p.id}>
+                                              {formatPriceOption(p)} (${p.unit_cost.toFixed(4)}/{p.unit})
+                                            </SelectItem>
                                           ))}
                                         </SelectContent>
                                       </Select>
-                                      {item.store_vendor_override && (
+                                      {item.price_id_override && (
                                         <span className="badge-override">Override</span>
                                       )}
                                     </div>
@@ -832,9 +837,12 @@ export default function RecipeDetailPage() {
                       </div>
                       {costBreakdown.breakdown.ingredient_costs.map((item, idx) => (
                         <div key={idx} className="cost-line text-sm">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-col">
                             <span>{item.ingredient_name}</span>
-                            {item.is_override && <span className="badge-override text-[10px]">Override</span>}
+                            <span className="text-xs text-[#5C554D]">
+                              {item.store_vendor}{item.brand ? ` - ${item.brand}` : ''}
+                              {item.is_override && <span className="badge-override ml-1 text-[10px]">Override</span>}
+                            </span>
                           </div>
                           <span className="font-mono">${item.cost.toFixed(2)}</span>
                         </div>

@@ -69,7 +69,7 @@ class RecipeLineItem(BaseModel):
     ingredient_name: str
     quantity: float
     unit: str
-    store_vendor_override: Optional[str] = None  # Override default vendor
+    price_id_override: Optional[str] = None  # Override to specific price record
 
 class PackagingLineItem(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -147,11 +147,11 @@ async def get_settings() -> Settings:
     await db.settings.insert_one(settings.model_dump())
     return settings
 
-async def get_ingredient_price(ingredient_id: str, store_vendor_override: Optional[str] = None) -> Optional[IngredientPrice]:
-    """Get ingredient price - use override vendor or latest price"""
-    if store_vendor_override:
+async def get_ingredient_price(ingredient_id: str, price_id_override: Optional[str] = None) -> Optional[IngredientPrice]:
+    """Get ingredient price - use override price ID or latest price"""
+    if price_id_override:
         doc = await db.ingredient_prices.find_one(
-            {"ingredient_id": ingredient_id, "store_vendor": store_vendor_override},
+            {"id": price_id_override},
             {"_id": 0}
         )
         if doc:
@@ -415,7 +415,7 @@ async def calculate_variant_cost(recipe_id: str, variant_id: str, selling_price:
     
     # Calculate ingredient costs
     for item in variant.ingredients:
-        price = await get_ingredient_price(item.ingredient_id, item.store_vendor_override)
+        price = await get_ingredient_price(item.ingredient_id, item.price_id_override)
         if price:
             cost = item.quantity * price.unit_cost
             breakdown.ingredient_costs.append({
@@ -424,7 +424,8 @@ async def calculate_variant_cost(recipe_id: str, variant_id: str, selling_price:
                 "unit": item.unit,
                 "unit_cost": round(price.unit_cost, 4),
                 "store_vendor": price.store_vendor,
-                "is_override": item.store_vendor_override is not None,
+                "brand": price.notes,  # notes field stores brand
+                "is_override": item.price_id_override is not None,
                 "cost": round(cost, 4)
             })
             breakdown.total_ingredient_cost += cost
