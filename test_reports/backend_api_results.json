@@ -1,0 +1,489 @@
+{
+  "summary": {
+    "tests_run": 25,
+    "tests_passed": 25,
+    "success_rate": 100.0
+  },
+  "results": [
+    {
+      "test": "Root API",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "message": "Shadow Cakes Pricing Tool API"
+      }
+    },
+    {
+      "test": "Get Settings",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "id": "settings",
+        "labour_rate_per_hour": 10.0,
+        "utility_rate_per_hour": 1.0,
+        "currency": "CAD",
+        "currency_symbol": "$"
+      }
+    },
+    {
+      "test": "Update Settings",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "id": "settings",
+        "labour_rate_per_hour": 15.0,
+        "utility_rate_per_hour": 2.0,
+        "currency": "CAD",
+        "currency_symbol": "$"
+      }
+    },
+    {
+      "test": "Create Ingredient",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "name": "Test Flour",
+        "default_unit": "g",
+        "notes": "Test ingredient for API testing",
+        "id": "a7e51988-8c0d-47e9-b9f1-a101ea9bf3e0",
+        "created_at": "2026-03-29T18:24:42.640452+00:00"
+      }
+    },
+    {
+      "test": "Get All Ingredients",
+      "success": true,
+      "error": null,
+      "response_data": [
+        {
+          "name": "Test Flour",
+          "default_unit": "g",
+          "notes": "Test ingredient for API testing",
+          "id": "a7e51988-8c0d-47e9-b9f1-a101ea9bf3e0",
+          "created_at": "2026-03-29T18:24:42.640452+00:00"
+        }
+      ]
+    },
+    {
+      "test": "Create Second Ingredient",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "name": "Test Sugar",
+        "default_unit": "g",
+        "notes": "Another test ingredient",
+        "id": "a2a369d2-8442-4e9c-a086-a0dbaaf38019",
+        "created_at": "2026-03-29T18:24:42.945232+00:00"
+      }
+    },
+    {
+      "test": "Create Ingredient Price",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "id": "2587db57-01e9-411a-9684-f6cc3969760b",
+        "ingredient_id": "a7e51988-8c0d-47e9-b9f1-a101ea9bf3e0",
+        "ingredient_name": "Test Flour",
+        "store_vendor": "Test Store",
+        "purchase_price": 5.99,
+        "package_size": 1000.0,
+        "unit": "g",
+        "unit_cost": 0.0059900000000000005,
+        "purchase_date": "2026-03-29T18:24:42.966584+00:00",
+        "is_latest": true,
+        "notes": "Test price"
+      }
+    },
+    {
+      "test": "Get All Ingredient Prices",
+      "success": true,
+      "error": null,
+      "response_data": [
+        {
+          "id": "2587db57-01e9-411a-9684-f6cc3969760b",
+          "ingredient_id": "a7e51988-8c0d-47e9-b9f1-a101ea9bf3e0",
+          "ingredient_name": "Test Flour",
+          "store_vendor": "Test Store",
+          "purchase_price": 5.99,
+          "package_size": 1000.0,
+          "unit": "g",
+          "unit_cost": 0.0059900000000000005,
+          "purchase_date": "2026-03-29T18:24:42.966584+00:00",
+          "is_latest": true,
+          "notes": "Test price"
+        }
+      ]
+    },
+    {
+      "test": "Get Ingredient Prices",
+      "success": true,
+      "error": null,
+      "response_data": [
+        {
+          "id": "2587db57-01e9-411a-9684-f6cc3969760b",
+          "ingredient_id": "a7e51988-8c0d-47e9-b9f1-a101ea9bf3e0",
+          "ingredient_name": "Test Flour",
+          "store_vendor": "Test Store",
+          "purchase_price": 5.99,
+          "package_size": 1000.0,
+          "unit": "g",
+          "unit_cost": 0.0059900000000000005,
+          "purchase_date": "2026-03-29T18:24:42.966584+00:00",
+          "is_latest": true,
+          "notes": "Test price"
+        }
+      ]
+    },
+    {
+      "test": "Create Packaging",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "name": "Test Box",
+        "unit_cost": 2.5,
+        "unit": "piece",
+        "notes": "Test packaging item",
+        "id": "a3730fa1-f47a-40f4-821c-3d0fb4101bb7",
+        "created_at": "2026-03-29T18:24:43.462393+00:00"
+      }
+    },
+    {
+      "test": "Get All Packaging",
+      "success": true,
+      "error": null,
+      "response_data": [
+        {
+          "name": "Test Box",
+          "unit_cost": 2.5,
+          "unit": "piece",
+          "notes": "Test packaging item",
+          "id": "a3730fa1-f47a-40f4-821c-3d0fb4101bb7",
+          "created_at": "2026-03-29T18:24:43.462393+00:00"
+        }
+      ]
+    },
+    {
+      "test": "Create Component Recipe",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "id": "1ad0de2b-26ff-4da5-94cf-67ab04ca41e8",
+        "name": "Test Ganache",
+        "batch_yield_grams": 500.0,
+        "ingredients": [
+          {
+            "id": "a66e228d-571e-41d9-bdbd-66c9b941a325",
+            "ingredient_id": "a7e51988-8c0d-47e9-b9f1-a101ea9bf3e0",
+            "ingredient_name": "Test Flour",
+            "quantity": 100.0,
+            "unit": "g",
+            "store_vendor_override": null
+          }
+        ],
+        "packaging": [],
+        "prep_time_minutes": 30.0,
+        "notes": "Test component recipe",
+        "created_at": "2026-03-29T18:24:43.714847+00:00"
+      }
+    },
+    {
+      "test": "Get All Component Recipes",
+      "success": true,
+      "error": null,
+      "response_data": [
+        {
+          "id": "1ad0de2b-26ff-4da5-94cf-67ab04ca41e8",
+          "name": "Test Ganache",
+          "batch_yield_grams": 500.0,
+          "ingredients": [
+            {
+              "id": "a66e228d-571e-41d9-bdbd-66c9b941a325",
+              "ingredient_id": "a7e51988-8c0d-47e9-b9f1-a101ea9bf3e0",
+              "ingredient_name": "Test Flour",
+              "quantity": 100.0,
+              "unit": "g",
+              "store_vendor_override": null
+            }
+          ],
+          "packaging": [],
+          "prep_time_minutes": 30.0,
+          "notes": "Test component recipe",
+          "created_at": "2026-03-29T18:24:43.714847+00:00"
+        }
+      ]
+    },
+    {
+      "test": "Get Component Recipe",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "id": "1ad0de2b-26ff-4da5-94cf-67ab04ca41e8",
+        "name": "Test Ganache",
+        "batch_yield_grams": 500.0,
+        "ingredients": [
+          {
+            "id": "a66e228d-571e-41d9-bdbd-66c9b941a325",
+            "ingredient_id": "a7e51988-8c0d-47e9-b9f1-a101ea9bf3e0",
+            "ingredient_name": "Test Flour",
+            "quantity": 100.0,
+            "unit": "g",
+            "store_vendor_override": null
+          }
+        ],
+        "packaging": [],
+        "prep_time_minutes": 30.0,
+        "notes": "Test component recipe",
+        "created_at": "2026-03-29T18:24:43.714847+00:00"
+      }
+    },
+    {
+      "test": "Create Recipe",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "name": "Test Cake",
+        "category": "Cakes",
+        "notes": "Test recipe",
+        "id": "0b9006c4-b7b6-45bc-8906-12f2d9aa6d9b",
+        "variants": [
+          {
+            "id": "920e34a1-2c62-464c-b4a9-0a86fa3e14b6",
+            "name": "6-inch",
+            "ingredients": [
+              {
+                "id": "9c3185b4-1d36-4451-ad96-7dafb4889352",
+                "ingredient_id": "a7e51988-8c0d-47e9-b9f1-a101ea9bf3e0",
+                "ingredient_name": "Test Flour",
+                "quantity": 200.0,
+                "unit": "g",
+                "store_vendor_override": null
+              }
+            ],
+            "packaging": [],
+            "components": [],
+            "prep_time_minutes": 60.0,
+            "notes": null
+          }
+        ],
+        "created_at": "2026-03-29T18:24:44.072086+00:00"
+      }
+    },
+    {
+      "test": "Get All Recipes",
+      "success": true,
+      "error": null,
+      "response_data": [
+        {
+          "name": "Test Cake",
+          "category": "Cakes",
+          "notes": "Test recipe",
+          "id": "0b9006c4-b7b6-45bc-8906-12f2d9aa6d9b",
+          "variants": [
+            {
+              "id": "920e34a1-2c62-464c-b4a9-0a86fa3e14b6",
+              "name": "6-inch",
+              "ingredients": [
+                {
+                  "id": "9c3185b4-1d36-4451-ad96-7dafb4889352",
+                  "ingredient_id": "a7e51988-8c0d-47e9-b9f1-a101ea9bf3e0",
+                  "ingredient_name": "Test Flour",
+                  "quantity": 200.0,
+                  "unit": "g",
+                  "store_vendor_override": null
+                }
+              ],
+              "packaging": [],
+              "components": [],
+              "prep_time_minutes": 60.0,
+              "notes": null
+            }
+          ],
+          "created_at": "2026-03-29T18:24:44.072086+00:00"
+        }
+      ]
+    },
+    {
+      "test": "Get Recipe",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "name": "Test Cake",
+        "category": "Cakes",
+        "notes": "Test recipe",
+        "id": "0b9006c4-b7b6-45bc-8906-12f2d9aa6d9b",
+        "variants": [
+          {
+            "id": "920e34a1-2c62-464c-b4a9-0a86fa3e14b6",
+            "name": "6-inch",
+            "ingredients": [
+              {
+                "id": "9c3185b4-1d36-4451-ad96-7dafb4889352",
+                "ingredient_id": "a7e51988-8c0d-47e9-b9f1-a101ea9bf3e0",
+                "ingredient_name": "Test Flour",
+                "quantity": 200.0,
+                "unit": "g",
+                "store_vendor_override": null
+              }
+            ],
+            "packaging": [],
+            "components": [],
+            "prep_time_minutes": 60.0,
+            "notes": null
+          }
+        ],
+        "created_at": "2026-03-29T18:24:44.072086+00:00"
+      }
+    },
+    {
+      "test": "Get Recipe for Cost Calc",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "name": "Test Cake",
+        "category": "Cakes",
+        "notes": "Test recipe",
+        "id": "0b9006c4-b7b6-45bc-8906-12f2d9aa6d9b",
+        "variants": [
+          {
+            "id": "920e34a1-2c62-464c-b4a9-0a86fa3e14b6",
+            "name": "6-inch",
+            "ingredients": [
+              {
+                "id": "9c3185b4-1d36-4451-ad96-7dafb4889352",
+                "ingredient_id": "a7e51988-8c0d-47e9-b9f1-a101ea9bf3e0",
+                "ingredient_name": "Test Flour",
+                "quantity": 200.0,
+                "unit": "g",
+                "store_vendor_override": null
+              }
+            ],
+            "packaging": [],
+            "components": [],
+            "prep_time_minutes": 60.0,
+            "notes": null
+          }
+        ],
+        "created_at": "2026-03-29T18:24:44.072086+00:00"
+      }
+    },
+    {
+      "test": "Calculate Cost",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "recipe_name": "Test Cake",
+        "variant_name": "6-inch",
+        "prep_time_minutes": 60.0,
+        "settings": {
+          "id": "settings",
+          "labour_rate_per_hour": 15.0,
+          "utility_rate_per_hour": 2.0,
+          "currency": "CAD",
+          "currency_symbol": "$"
+        },
+        "breakdown": {
+          "ingredient_costs": [
+            {
+              "ingredient_name": "Test Flour",
+              "quantity": 200.0,
+              "unit": "g",
+              "unit_cost": 0.006,
+              "store_vendor": "Test Store",
+              "is_override": false,
+              "cost": 1.198
+            }
+          ],
+          "packaging_costs": [],
+          "component_costs": [],
+          "labour_cost": 15.0,
+          "utility_cost": 2.0,
+          "total_ingredient_cost": 1.2,
+          "total_packaging_cost": 0,
+          "total_component_cost": 0,
+          "total_cost": 18.2,
+          "selling_price": null,
+          "profit_margin": null
+        }
+      }
+    },
+    {
+      "test": "Calculate Cost with Margin",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "recipe_name": "Test Cake",
+        "variant_name": "6-inch",
+        "prep_time_minutes": 60.0,
+        "settings": {
+          "id": "settings",
+          "labour_rate_per_hour": 15.0,
+          "utility_rate_per_hour": 2.0,
+          "currency": "CAD",
+          "currency_symbol": "$"
+        },
+        "breakdown": {
+          "ingredient_costs": [
+            {
+              "ingredient_name": "Test Flour",
+              "quantity": 200.0,
+              "unit": "g",
+              "unit_cost": 0.006,
+              "store_vendor": "Test Store",
+              "is_override": false,
+              "cost": 1.198
+            }
+          ],
+          "packaging_costs": [],
+          "component_costs": [],
+          "labour_cost": 15.0,
+          "utility_cost": 2.0,
+          "total_ingredient_cost": 1.2,
+          "total_packaging_cost": 0,
+          "total_component_cost": 0,
+          "total_cost": 18.2,
+          "selling_price": 25.0,
+          "profit_margin": 27.2
+        }
+      }
+    },
+    {
+      "test": "Delete Recipe 0b9006c4-b7b6-45bc-8906-12f2d9aa6d9b",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "status": "deleted"
+      }
+    },
+    {
+      "test": "Delete Component 1ad0de2b-26ff-4da5-94cf-67ab04ca41e8",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "status": "deleted"
+      }
+    },
+    {
+      "test": "Delete Packaging a3730fa1-f47a-40f4-821c-3d0fb4101bb7",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "status": "deleted"
+      }
+    },
+    {
+      "test": "Delete Ingredient a7e51988-8c0d-47e9-b9f1-a101ea9bf3e0",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "status": "deleted"
+      }
+    },
+    {
+      "test": "Delete Ingredient a2a369d2-8442-4e9c-a086-a0dbaaf38019",
+      "success": true,
+      "error": null,
+      "response_data": {
+        "status": "deleted"
+      }
+    }
+  ]
+}

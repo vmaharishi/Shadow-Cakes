@@ -1,34 +1,254 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
-}
+/* Shadow Cakes Pricing Tool - App Styles */
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
-}
-
-.App-header {
-    background-color: #0f0f10;
+.app-container {
     min-height: 100vh;
+    background-color: #FDFBF7;
+}
+
+/* Sidebar styles */
+.sidebar {
+    background-color: #FFFFFF;
+    border-right: 1px solid #E8E3D9;
+    min-height: 100vh;
+}
+
+.sidebar-link {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
+    gap: 0.75rem;
+    padding: 0.625rem 1rem;
+    color: #5C554D;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.sidebar-link:hover {
+    background-color: #F4F1EA;
+    color: #2C1E16;
+}
+
+.sidebar-link.active {
+    background-color: #F4F1EA;
+    color: #2C1E16;
+    font-weight: 600;
+}
+
+/* Page header */
+.page-header {
+    border-bottom: 1px solid #E8E3D9;
+    background-color: #FFFFFF;
+    padding: 1.5rem 2rem;
+}
+
+.page-title {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 500;
+    font-size: 1.5rem;
+    color: #1A1A1A;
+    letter-spacing: -0.025em;
+}
+
+/* Cards */
+.card-flat {
+    background-color: #FFFFFF;
+    border: 1px solid #E8E3D9;
+    border-radius: 0.5rem;
+}
+
+/* Tables */
+.table-header-cell {
+    background-color: #F4F1EA;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #5C554D;
+    padding: 0.75rem 1rem;
+    text-align: left;
+}
+
+.table-row {
+    border-bottom: 1px solid #E8E3D9;
+    transition: background-color 0.15s ease;
+}
+
+.table-row:hover {
+    background-color: #FDFBF7;
+}
+
+.table-cell {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+}
+
+.table-cell-numeric {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+}
+
+/* Form inputs */
+.form-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #5C554D;
+    margin-bottom: 0.375rem;
+}
+
+.form-input {
+    width: 100%;
+    background-color: #FFFFFF;
+    border: 1px solid #E8E3D9;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.form-input:focus {
+    border-color: #C57B57;
+    box-shadow: 0 0 0 3px rgba(197, 123, 87, 0.15);
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: #2C1E16;
     color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: background-color 0.2s ease;
 }
 
-.App-link {
-    color: #61dafb;
+.btn-primary:hover {
+    background-color: #3E2A1F;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.btn-secondary {
+    background-color: transparent;
+    border: 1px solid #E8E3D9;
+    color: #2C1E16;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+    background-color: #F4F1EA;
+}
+
+/* Badges */
+.badge-override {
+    background-color: rgba(217, 148, 65, 0.1);
+    color: #D99441;
+    border: 1px solid rgba(217, 148, 65, 0.2);
+    border-radius: 9999px;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-success {
+    background-color: rgba(74, 107, 83, 0.1);
+    color: #4A6B53;
+    border-radius: 9999px;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.badge-danger {
+    background-color: rgba(166, 60, 60, 0.1);
+    color: #A63C3C;
+    border-radius: 9999px;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Drop zone */
+.drop-zone {
+    border: 2px dashed #E8E3D9;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.drop-zone:hover {
+    border-color: #C57B57;
+    background-color: rgba(197, 123, 87, 0.05);
+}
+
+.drop-zone.active {
+    border-color: #C57B57;
+    background-color: rgba(197, 123, 87, 0.1);
+}
+
+/* Cost breakdown panel */
+.cost-breakdown {
+    background-color: #FFFFFF;
+    border: 1px solid #E8E3D9;
+    border-radius: 0.5rem;
+}
+
+.cost-line {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #E8E3D9;
+}
+
+.cost-line:last-child {
+    border-bottom: none;
+}
+
+.cost-total {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    font-weight: 600;
+    border-top: 2px solid #2C1E16;
+    margin-top: 0.5rem;
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.empty-state-icon {
+    width: 4rem;
+    height: 4rem;
+    margin: 0 auto 1rem;
+    color: #5C554D;
+    opacity: 0.5;
+}
+
+.empty-state-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: #1A1A1A;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state-description {
+    color: #5C554D;
+    font-size: 0.875rem;
+    max-width: 24rem;
+    margin: 0 auto;
 }

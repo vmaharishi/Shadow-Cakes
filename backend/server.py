@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,10 +6,11 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
-
+from io import BytesIO
+import openpyxl
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -25,46 +26,775 @@ app = FastAPI()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# ==================== MODELS ====================
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
+class IngredientBase(BaseModel):
+    name: str
+    default_unit: str = "g"
+    notes: Optional[str] = None
+
+class Ingredient(IngredientBase):
+    model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+class IngredientPrice(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    ingredient_id: str
+    ingredient_name: str
+    store_vendor: str
+    purchase_price: float
+    package_size: float
+    unit: str
+    unit_cost: float = 0  # Calculated: purchase_price / package_size
+    purchase_date: str
+    is_latest: bool = True
+    notes: Optional[str] = None
 
-# Add your routes to the router instead of directly to app
+class PackagingBase(BaseModel):
+    name: str
+    unit_cost: float
+    unit: str = "piece"
+    notes: Optional[str] = None
+
+class Packaging(PackagingBase):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class RecipeLineItem(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    ingredient_id: str
+    ingredient_name: str
+    quantity: float
+    unit: str
+    store_vendor_override: Optional[str] = None  # Override default vendor
+
+class PackagingLineItem(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    packaging_id: str
+    packaging_name: str
+    quantity: float
+
+class ComponentRecipeRef(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    component_recipe_id: str
+    component_name: str
+    quantity: float  # Amount in grams or full batch
+    use_gram_costing: bool = False
+
+class RecipeVariant(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str  # e.g., "6-inch", "8-inch"
+    ingredients: List[RecipeLineItem] = []
+    packaging: List[PackagingLineItem] = []
+    components: List[ComponentRecipeRef] = []
+    prep_time_minutes: float = 0
+    notes: Optional[str] = None
+
+class RecipeBase(BaseModel):
+    name: str
+    category: Optional[str] = None
+    notes: Optional[str] = None
+
+class Recipe(RecipeBase):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    variants: List[RecipeVariant] = []
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class ComponentRecipe(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    batch_yield_grams: float = 0  # Required for gram costing
+    ingredients: List[RecipeLineItem] = []
+    packaging: List[PackagingLineItem] = []
+    prep_time_minutes: float = 0
+    notes: Optional[str] = None
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class Settings(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = "settings"
+    labour_rate_per_hour: float = 10.0
+    utility_rate_per_hour: float = 1.0
+    currency: str = "CAD"
+    currency_symbol: str = "$"
+
+class CostBreakdown(BaseModel):
+    ingredient_costs: List[Dict[str, Any]] = []
+    packaging_costs: List[Dict[str, Any]] = []
+    component_costs: List[Dict[str, Any]] = []
+    labour_cost: float = 0
+    utility_cost: float = 0
+    total_ingredient_cost: float = 0
+    total_packaging_cost: float = 0
+    total_component_cost: float = 0
+    total_cost: float = 0
+    selling_price: Optional[float] = None
+    profit_margin: Optional[float] = None
+
+# ==================== HELPER FUNCTIONS ====================
+
+async def get_settings() -> Settings:
+    """Get or create settings document"""
+    doc = await db.settings.find_one({"id": "settings"}, {"_id": 0})
+    if doc:
+        return Settings(**doc)
+    settings = Settings()
+    await db.settings.insert_one(settings.model_dump())
+    return settings
+
+async def get_ingredient_price(ingredient_id: str, store_vendor_override: Optional[str] = None) -> Optional[IngredientPrice]:
+    """Get ingredient price - use override vendor or latest price"""
+    if store_vendor_override:
+        doc = await db.ingredient_prices.find_one(
+            {"ingredient_id": ingredient_id, "store_vendor": store_vendor_override},
+            {"_id": 0}
+        )
+        if doc:
+            return IngredientPrice(**doc)
+    
+    # Get latest price for ingredient
+    doc = await db.ingredient_prices.find_one(
+        {"ingredient_id": ingredient_id, "is_latest": True},
+        {"_id": 0}
+    )
+    if doc:
+        return IngredientPrice(**doc)
+    
+    # Fallback to any price
+    doc = await db.ingredient_prices.find_one(
+        {"ingredient_id": ingredient_id},
+        {"_id": 0},
+        sort=[("purchase_date", -1)]
+    )
+    if doc:
+        return IngredientPrice(**doc)
+    return None
+
+async def calculate_component_cost(component_id: str, quantity: float, use_gram_costing: bool) -> Dict[str, Any]:
+    """Calculate cost for a component recipe"""
+    component = await db.component_recipes.find_one({"id": component_id}, {"_id": 0})
+    if not component:
+        return {"error": f"Component {component_id} not found", "cost": 0}
+    
+    component = ComponentRecipe(**component)
+    settings = await get_settings()
+    
+    # Calculate ingredient costs
+    total_ingredient_cost = 0
+    for item in component.ingredients:
+        price = await get_ingredient_price(item.ingredient_id)
+        if price:
+            cost = item.quantity * price.unit_cost
+            total_ingredient_cost += cost
+    
+    # Calculate packaging costs
+    total_packaging_cost = 0
+    for item in component.packaging:
+        pkg = await db.packaging.find_one({"id": item.packaging_id}, {"_id": 0})
+        if pkg:
+            cost = item.quantity * pkg["unit_cost"]
+            total_packaging_cost += cost
+    
+    # Labour and utilities
+    hours = component.prep_time_minutes / 60
+    labour_cost = hours * settings.labour_rate_per_hour
+    utility_cost = hours * settings.utility_rate_per_hour
+    
+    batch_cost = total_ingredient_cost + total_packaging_cost + labour_cost + utility_cost
+    
+    if use_gram_costing and component.batch_yield_grams > 0:
+        cost_per_gram = batch_cost / component.batch_yield_grams
+        final_cost = cost_per_gram * quantity
+    else:
+        final_cost = batch_cost * quantity  # quantity as multiplier of full batch
+    
+    return {
+        "component_name": component.name,
+        "quantity": quantity,
+        "use_gram_costing": use_gram_costing,
+        "batch_cost": round(batch_cost, 4),
+        "cost": round(final_cost, 4)
+    }
+
+# ==================== API ENDPOINTS ====================
+
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Shadow Cakes Pricing Tool API"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
+# ---------- SETTINGS ----------
+@api_router.get("/settings", response_model=Settings)
+async def get_app_settings():
+    return await get_settings()
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+@api_router.put("/settings", response_model=Settings)
+async def update_settings(settings: Settings):
+    settings.id = "settings"
+    await db.settings.replace_one({"id": "settings"}, settings.model_dump(), upsert=True)
+    return settings
+
+# ---------- INGREDIENTS ----------
+@api_router.get("/ingredients", response_model=List[Ingredient])
+async def get_ingredients():
+    docs = await db.ingredients.find({}, {"_id": 0}).to_list(1000)
+    return docs
+
+@api_router.post("/ingredients", response_model=Ingredient)
+async def create_ingredient(ingredient: IngredientBase):
+    new_ingredient = Ingredient(**ingredient.model_dump())
+    await db.ingredients.insert_one(new_ingredient.model_dump())
+    return new_ingredient
+
+@api_router.put("/ingredients/{ingredient_id}", response_model=Ingredient)
+async def update_ingredient(ingredient_id: str, ingredient: IngredientBase):
+    existing = await db.ingredients.find_one({"id": ingredient_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+    updated = {**existing, **ingredient.model_dump()}
+    await db.ingredients.replace_one({"id": ingredient_id}, updated)
+    return Ingredient(**updated)
+
+@api_router.delete("/ingredients/{ingredient_id}")
+async def delete_ingredient(ingredient_id: str):
+    result = await db.ingredients.delete_one({"id": ingredient_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+    # Also delete associated prices
+    await db.ingredient_prices.delete_many({"ingredient_id": ingredient_id})
+    return {"status": "deleted"}
+
+# ---------- INGREDIENT PRICES ----------
+@api_router.get("/ingredient-prices", response_model=List[IngredientPrice])
+async def get_ingredient_prices():
+    docs = await db.ingredient_prices.find({}, {"_id": 0}).to_list(5000)
+    return docs
+
+@api_router.get("/ingredient-prices/{ingredient_id}", response_model=List[IngredientPrice])
+async def get_prices_for_ingredient(ingredient_id: str):
+    docs = await db.ingredient_prices.find({"ingredient_id": ingredient_id}, {"_id": 0}).to_list(100)
+    return docs
+
+@api_router.post("/ingredient-prices", response_model=IngredientPrice)
+async def create_ingredient_price(price: IngredientPrice):
+    # Calculate unit cost
+    price.unit_cost = price.purchase_price / price.package_size if price.package_size > 0 else 0
+    # Set other prices for this ingredient as not latest
+    if price.is_latest:
+        await db.ingredient_prices.update_many(
+            {"ingredient_id": price.ingredient_id},
+            {"$set": {"is_latest": False}}
+        )
+    await db.ingredient_prices.insert_one(price.model_dump())
+    return price
+
+@api_router.delete("/ingredient-prices/{price_id}")
+async def delete_ingredient_price(price_id: str):
+    result = await db.ingredient_prices.delete_one({"id": price_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Price not found")
+    return {"status": "deleted"}
+
+# ---------- PACKAGING ----------
+@api_router.get("/packaging", response_model=List[Packaging])
+async def get_packaging():
+    docs = await db.packaging.find({}, {"_id": 0}).to_list(1000)
+    return docs
+
+@api_router.post("/packaging", response_model=Packaging)
+async def create_packaging(packaging: PackagingBase):
+    new_packaging = Packaging(**packaging.model_dump())
+    await db.packaging.insert_one(new_packaging.model_dump())
+    return new_packaging
+
+@api_router.put("/packaging/{packaging_id}", response_model=Packaging)
+async def update_packaging(packaging_id: str, packaging: PackagingBase):
+    existing = await db.packaging.find_one({"id": packaging_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Packaging not found")
+    updated = {**existing, **packaging.model_dump()}
+    await db.packaging.replace_one({"id": packaging_id}, updated)
+    return Packaging(**updated)
+
+@api_router.delete("/packaging/{packaging_id}")
+async def delete_packaging(packaging_id: str):
+    result = await db.packaging.delete_one({"id": packaging_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Packaging not found")
+    return {"status": "deleted"}
+
+# ---------- COMPONENT RECIPES ----------
+@api_router.get("/component-recipes", response_model=List[ComponentRecipe])
+async def get_component_recipes():
+    docs = await db.component_recipes.find({}, {"_id": 0}).to_list(1000)
+    return docs
+
+@api_router.get("/component-recipes/{component_id}", response_model=ComponentRecipe)
+async def get_component_recipe(component_id: str):
+    doc = await db.component_recipes.find_one({"id": component_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Component recipe not found")
+    return doc
+
+@api_router.post("/component-recipes", response_model=ComponentRecipe)
+async def create_component_recipe(component: ComponentRecipe):
+    await db.component_recipes.insert_one(component.model_dump())
+    return component
+
+@api_router.put("/component-recipes/{component_id}", response_model=ComponentRecipe)
+async def update_component_recipe(component_id: str, component: ComponentRecipe):
+    component.id = component_id
+    result = await db.component_recipes.replace_one({"id": component_id}, component.model_dump())
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Component recipe not found")
+    return component
+
+@api_router.delete("/component-recipes/{component_id}")
+async def delete_component_recipe(component_id: str):
+    result = await db.component_recipes.delete_one({"id": component_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Component recipe not found")
+    return {"status": "deleted"}
+
+# ---------- RECIPES ----------
+@api_router.get("/recipes", response_model=List[Recipe])
+async def get_recipes():
+    docs = await db.recipes.find({}, {"_id": 0}).to_list(1000)
+    return docs
+
+@api_router.get("/recipes/{recipe_id}", response_model=Recipe)
+async def get_recipe(recipe_id: str):
+    doc = await db.recipes.find_one({"id": recipe_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    return doc
+
+@api_router.post("/recipes", response_model=Recipe)
+async def create_recipe(recipe: Recipe):
+    await db.recipes.insert_one(recipe.model_dump())
+    return recipe
+
+@api_router.put("/recipes/{recipe_id}", response_model=Recipe)
+async def update_recipe(recipe_id: str, recipe: Recipe):
+    recipe.id = recipe_id
+    result = await db.recipes.replace_one({"id": recipe_id}, recipe.model_dump())
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    return recipe
+
+@api_router.delete("/recipes/{recipe_id}")
+async def delete_recipe(recipe_id: str):
+    result = await db.recipes.delete_one({"id": recipe_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    return {"status": "deleted"}
+
+# ---------- COST CALCULATION ----------
+@api_router.get("/recipes/{recipe_id}/variants/{variant_id}/cost")
+async def calculate_variant_cost(recipe_id: str, variant_id: str, selling_price: Optional[float] = None):
+    """Calculate full cost breakdown for a recipe variant"""
+    recipe = await db.recipes.find_one({"id": recipe_id}, {"_id": 0})
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
     
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
+    variant = None
+    for v in recipe.get("variants", []):
+        if v["id"] == variant_id:
+            variant = RecipeVariant(**v)
+            break
     
-    return status_checks
+    if not variant:
+        raise HTTPException(status_code=404, detail="Variant not found")
+    
+    settings = await get_settings()
+    breakdown = CostBreakdown()
+    
+    # Calculate ingredient costs
+    for item in variant.ingredients:
+        price = await get_ingredient_price(item.ingredient_id, item.store_vendor_override)
+        if price:
+            cost = item.quantity * price.unit_cost
+            breakdown.ingredient_costs.append({
+                "ingredient_name": item.ingredient_name,
+                "quantity": item.quantity,
+                "unit": item.unit,
+                "unit_cost": round(price.unit_cost, 4),
+                "store_vendor": price.store_vendor,
+                "is_override": item.store_vendor_override is not None,
+                "cost": round(cost, 4)
+            })
+            breakdown.total_ingredient_cost += cost
+    
+    # Calculate packaging costs
+    for item in variant.packaging:
+        pkg = await db.packaging.find_one({"id": item.packaging_id}, {"_id": 0})
+        if pkg:
+            cost = item.quantity * pkg["unit_cost"]
+            breakdown.packaging_costs.append({
+                "packaging_name": item.packaging_name,
+                "quantity": item.quantity,
+                "unit_cost": pkg["unit_cost"],
+                "cost": round(cost, 4)
+            })
+            breakdown.total_packaging_cost += cost
+    
+    # Calculate component costs
+    for comp_ref in variant.components:
+        comp_cost = await calculate_component_cost(
+            comp_ref.component_recipe_id,
+            comp_ref.quantity,
+            comp_ref.use_gram_costing
+        )
+        breakdown.component_costs.append(comp_cost)
+        breakdown.total_component_cost += comp_cost.get("cost", 0)
+    
+    # Calculate labour and utility costs
+    hours = variant.prep_time_minutes / 60
+    breakdown.labour_cost = round(hours * settings.labour_rate_per_hour, 4)
+    breakdown.utility_cost = round(hours * settings.utility_rate_per_hour, 4)
+    
+    # Total cost
+    breakdown.total_ingredient_cost = round(breakdown.total_ingredient_cost, 2)
+    breakdown.total_packaging_cost = round(breakdown.total_packaging_cost, 2)
+    breakdown.total_component_cost = round(breakdown.total_component_cost, 2)
+    breakdown.total_cost = round(
+        breakdown.total_ingredient_cost +
+        breakdown.total_packaging_cost +
+        breakdown.total_component_cost +
+        breakdown.labour_cost +
+        breakdown.utility_cost,
+        2
+    )
+    
+    # Calculate margin if selling price provided
+    if selling_price is not None and selling_price > 0:
+        breakdown.selling_price = selling_price
+        profit = selling_price - breakdown.total_cost
+        breakdown.profit_margin = round((profit / selling_price) * 100, 2)
+    
+    return {
+        "recipe_name": recipe["name"],
+        "variant_name": variant.name,
+        "prep_time_minutes": variant.prep_time_minutes,
+        "settings": settings.model_dump(),
+        "breakdown": breakdown.model_dump()
+    }
+
+# ---------- EXCEL IMPORT ----------
+@api_router.post("/import/ingredients")
+async def import_ingredient_pricing(file: UploadFile = File(...)):
+    """
+    Import ingredient pricing from Excel.
+    Expected columns: ingredient_name, store_vendor, purchase_price, package_size, unit, purchase_date, notes
+    """
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx)")
+    
+    content = await file.read()
+    wb = openpyxl.load_workbook(BytesIO(content))
+    ws = wb.active
+    
+    headers = [cell.value.lower().strip() if cell.value else "" for cell in ws[1]]
+    required = ["ingredient_name", "store_vendor", "purchase_price", "package_size", "unit"]
+    missing = [r for r in required if r not in headers]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Missing required columns: {missing}")
+    
+    # Clear existing data (replace behavior)
+    await db.ingredient_prices.delete_many({})
+    await db.ingredients.delete_many({})
+    
+    ingredients_map = {}  # name -> id
+    prices_added = 0
+    errors = []
+    
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        try:
+            row_dict = {headers[i]: row[i] for i in range(len(headers)) if i < len(row)}
+            
+            ingredient_name = str(row_dict.get("ingredient_name", "")).strip()
+            if not ingredient_name:
+                continue
+            
+            # Create or get ingredient
+            if ingredient_name not in ingredients_map:
+                ingredient = Ingredient(name=ingredient_name, default_unit=str(row_dict.get("unit", "g")))
+                await db.ingredients.insert_one(ingredient.model_dump())
+                ingredients_map[ingredient_name] = ingredient.id
+            
+            ingredient_id = ingredients_map[ingredient_name]
+            
+            # Create price record
+            purchase_price = float(row_dict.get("purchase_price", 0) or 0)
+            package_size = float(row_dict.get("package_size", 1) or 1)
+            unit_cost = purchase_price / package_size if package_size > 0 else 0
+            
+            purchase_date = row_dict.get("purchase_date", "")
+            if isinstance(purchase_date, datetime):
+                purchase_date = purchase_date.isoformat()
+            else:
+                purchase_date = str(purchase_date) if purchase_date else datetime.now(timezone.utc).isoformat()
+            
+            price = IngredientPrice(
+                ingredient_id=ingredient_id,
+                ingredient_name=ingredient_name,
+                store_vendor=str(row_dict.get("store_vendor", "Default")),
+                purchase_price=purchase_price,
+                package_size=package_size,
+                unit=str(row_dict.get("unit", "g")),
+                unit_cost=unit_cost,
+                purchase_date=purchase_date,
+                is_latest=True,
+                notes=str(row_dict.get("notes", "") or "")
+            )
+            await db.ingredient_prices.insert_one(price.model_dump())
+            prices_added += 1
+            
+        except Exception as e:
+            errors.append(f"Row {row_idx}: {str(e)}")
+    
+    return {
+        "status": "success",
+        "ingredients_created": len(ingredients_map),
+        "prices_added": prices_added,
+        "errors": errors[:10] if errors else []
+    }
+
+@api_router.post("/import/recipes")
+async def import_recipes(file: UploadFile = File(...)):
+    """
+    Import recipes from Excel.
+    Expected columns: recipe_name, variant_name, ingredient_name, quantity, unit, prep_time_minutes, category, notes
+    """
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx)")
+    
+    content = await file.read()
+    wb = openpyxl.load_workbook(BytesIO(content))
+    ws = wb.active
+    
+    headers = [cell.value.lower().strip() if cell.value else "" for cell in ws[1]]
+    required = ["recipe_name", "variant_name", "ingredient_name", "quantity", "unit"]
+    missing = [r for r in required if r not in headers]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Missing required columns: {missing}")
+    
+    # Clear existing recipes (replace behavior)
+    await db.recipes.delete_many({})
+    
+    # Build recipe structure
+    recipes_map = {}  # recipe_name -> Recipe
+    ingredients_list = await db.ingredients.find({}, {"_id": 0}).to_list(5000)
+    ingredients_lookup = {i["name"].lower(): i for i in ingredients_list}
+    
+    errors = []
+    
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        try:
+            row_dict = {headers[i]: row[i] for i in range(len(headers)) if i < len(row)}
+            
+            recipe_name = str(row_dict.get("recipe_name", "")).strip()
+            variant_name = str(row_dict.get("variant_name", "")).strip()
+            ingredient_name = str(row_dict.get("ingredient_name", "")).strip()
+            
+            if not recipe_name or not variant_name:
+                continue
+            
+            # Get or create recipe
+            if recipe_name not in recipes_map:
+                recipes_map[recipe_name] = Recipe(
+                    name=recipe_name,
+                    category=str(row_dict.get("category", "") or ""),
+                    notes=str(row_dict.get("notes", "") or ""),
+                    variants=[]
+                )
+            
+            recipe = recipes_map[recipe_name]
+            
+            # Get or create variant
+            variant = None
+            for v in recipe.variants:
+                if v.name == variant_name:
+                    variant = v
+                    break
+            
+            if not variant:
+                prep_time = float(row_dict.get("prep_time_minutes", 0) or 0)
+                variant = RecipeVariant(
+                    name=variant_name,
+                    prep_time_minutes=prep_time,
+                    notes=str(row_dict.get("notes", "") or "")
+                )
+                recipe.variants.append(variant)
+            
+            # Add ingredient line item
+            if ingredient_name:
+                ingredient_key = ingredient_name.lower()
+                ingredient_id = ingredients_lookup.get(ingredient_key, {}).get("id", "")
+                
+                if not ingredient_id:
+                    # Create ingredient if not exists
+                    new_ing = Ingredient(name=ingredient_name, default_unit=str(row_dict.get("unit", "g")))
+                    await db.ingredients.insert_one(new_ing.model_dump())
+                    ingredients_lookup[ingredient_key] = new_ing.model_dump()
+                    ingredient_id = new_ing.id
+                
+                line_item = RecipeLineItem(
+                    ingredient_id=ingredient_id,
+                    ingredient_name=ingredient_name,
+                    quantity=float(row_dict.get("quantity", 0) or 0),
+                    unit=str(row_dict.get("unit", "g"))
+                )
+                variant.ingredients.append(line_item)
+                
+        except Exception as e:
+            errors.append(f"Row {row_idx}: {str(e)}")
+    
+    # Save all recipes
+    for recipe in recipes_map.values():
+        await db.recipes.insert_one(recipe.model_dump())
+    
+    total_variants = sum(len(r.variants) for r in recipes_map.values())
+    
+    return {
+        "status": "success",
+        "recipes_created": len(recipes_map),
+        "variants_created": total_variants,
+        "errors": errors[:10] if errors else []
+    }
+
+@api_router.post("/import/packaging")
+async def import_packaging(file: UploadFile = File(...)):
+    """
+    Import packaging from Excel.
+    Expected columns: name, unit_cost, unit, notes
+    """
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx)")
+    
+    content = await file.read()
+    wb = openpyxl.load_workbook(BytesIO(content))
+    ws = wb.active
+    
+    headers = [cell.value.lower().strip() if cell.value else "" for cell in ws[1]]
+    required = ["name", "unit_cost"]
+    missing = [r for r in required if r not in headers]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Missing required columns: {missing}")
+    
+    # Clear existing packaging (replace behavior)
+    await db.packaging.delete_many({})
+    
+    items_added = 0
+    errors = []
+    
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        try:
+            row_dict = {headers[i]: row[i] for i in range(len(headers)) if i < len(row)}
+            
+            name = str(row_dict.get("name", "")).strip()
+            if not name:
+                continue
+            
+            packaging = Packaging(
+                name=name,
+                unit_cost=float(row_dict.get("unit_cost", 0) or 0),
+                unit=str(row_dict.get("unit", "piece") or "piece"),
+                notes=str(row_dict.get("notes", "") or "")
+            )
+            await db.packaging.insert_one(packaging.model_dump())
+            items_added += 1
+            
+        except Exception as e:
+            errors.append(f"Row {row_idx}: {str(e)}")
+    
+    return {
+        "status": "success",
+        "packaging_added": items_added,
+        "errors": errors[:10] if errors else []
+    }
+
+@api_router.post("/import/components")
+async def import_component_recipes(file: UploadFile = File(...)):
+    """
+    Import component recipes from Excel.
+    Expected columns: component_name, batch_yield_grams, ingredient_name, quantity, unit, prep_time_minutes, notes
+    """
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx)")
+    
+    content = await file.read()
+    wb = openpyxl.load_workbook(BytesIO(content))
+    ws = wb.active
+    
+    headers = [cell.value.lower().strip() if cell.value else "" for cell in ws[1]]
+    required = ["component_name", "ingredient_name", "quantity", "unit"]
+    missing = [r for r in required if r not in headers]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Missing required columns: {missing}")
+    
+    # Clear existing components (replace behavior)
+    await db.component_recipes.delete_many({})
+    
+    components_map = {}
+    ingredients_list = await db.ingredients.find({}, {"_id": 0}).to_list(5000)
+    ingredients_lookup = {i["name"].lower(): i for i in ingredients_list}
+    
+    errors = []
+    
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        try:
+            row_dict = {headers[i]: row[i] for i in range(len(headers)) if i < len(row)}
+            
+            component_name = str(row_dict.get("component_name", "")).strip()
+            ingredient_name = str(row_dict.get("ingredient_name", "")).strip()
+            
+            if not component_name:
+                continue
+            
+            if component_name not in components_map:
+                components_map[component_name] = ComponentRecipe(
+                    name=component_name,
+                    batch_yield_grams=float(row_dict.get("batch_yield_grams", 0) or 0),
+                    prep_time_minutes=float(row_dict.get("prep_time_minutes", 0) or 0),
+                    notes=str(row_dict.get("notes", "") or "")
+                )
+            
+            component = components_map[component_name]
+            
+            if ingredient_name:
+                ingredient_key = ingredient_name.lower()
+                ingredient_id = ingredients_lookup.get(ingredient_key, {}).get("id", "")
+                
+                if not ingredient_id:
+                    new_ing = Ingredient(name=ingredient_name, default_unit=str(row_dict.get("unit", "g")))
+                    await db.ingredients.insert_one(new_ing.model_dump())
+                    ingredients_lookup[ingredient_key] = new_ing.model_dump()
+                    ingredient_id = new_ing.id
+                
+                line_item = RecipeLineItem(
+                    ingredient_id=ingredient_id,
+                    ingredient_name=ingredient_name,
+                    quantity=float(row_dict.get("quantity", 0) or 0),
+                    unit=str(row_dict.get("unit", "g"))
+                )
+                component.ingredients.append(line_item)
+                
+        except Exception as e:
+            errors.append(f"Row {row_idx}: {str(e)}")
+    
+    for component in components_map.values():
+        await db.component_recipes.insert_one(component.model_dump())
+    
+    return {
+        "status": "success",
+        "components_created": len(components_map),
+        "errors": errors[:10] if errors else []
+    }
 
 # Include the router in the main app
 app.include_router(api_router)
