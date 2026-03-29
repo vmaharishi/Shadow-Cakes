@@ -517,7 +517,7 @@ async def import_ingredient_pricing(file: UploadFile = File(...)):
             row_dict = {headers[i]: row[i] for i in range(len(headers)) if i < len(row)}
             
             ingredient_name = str(row_dict.get("ingredient_name", "")).strip()
-            if not ingredient_name:
+            if not ingredient_name or ingredient_name.lower() == "none":
                 continue
             
             # Create or get ingredient
@@ -697,7 +697,7 @@ async def import_packaging(file: UploadFile = File(...)):
             row_dict = {headers[i]: row[i] for i in range(len(headers)) if i < len(row)}
             
             name = str(row_dict.get("packaging_name", "")).strip()
-            if not name:
+            if not name or name.lower() == "none":
                 continue
             
             # Calculate unit cost from purchase_price / package_size
@@ -793,7 +793,7 @@ async def import_component_recipes(file: UploadFile = File(...)):
             component_name = str(row_dict.get("component_name", "")).strip()
             ingredient_name = str(row_dict.get("ingredient_name", "")).strip()
             
-            if not component_name:
+            if not component_name or component_name.lower() == "none":
                 continue
             
             if component_name not in components_map:
