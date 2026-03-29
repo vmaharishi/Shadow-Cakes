@@ -303,7 +303,7 @@ export default function IngredientsPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search ingredients..."
+              placeholder=""
               className="pl-10 form-input"
               data-testid="search-ingredients-input"
             />

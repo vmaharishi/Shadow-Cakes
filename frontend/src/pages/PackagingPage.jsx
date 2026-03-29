@@ -286,7 +286,7 @@ export default function PackagingPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search packaging..."
+              placeholder=""
               className="pl-10 form-input"
               data-testid="search-packaging-input"
             />

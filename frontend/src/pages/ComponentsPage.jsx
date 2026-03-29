@@ -324,7 +324,7 @@ export default function ComponentsPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search components..."
+              placeholder=""
               className="pl-10 form-input"
               data-testid="search-components-input"
             />

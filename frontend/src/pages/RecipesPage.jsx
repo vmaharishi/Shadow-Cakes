@@ -196,7 +196,7 @@ export default function RecipesPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search recipes..."
+              placeholder=""
               className="pl-10 form-input"
               data-testid="search-recipes-input"
             />
