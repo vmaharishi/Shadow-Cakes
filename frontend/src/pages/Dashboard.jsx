@@ -82,9 +82,6 @@ export default function Dashboard() {
     <div data-testid="dashboard-page">
       <header className="page-header">
         <h1 className="page-title">Dashboard</h1>
-        <p className="text-sm text-[#5C554D] mt-1">
-          Welcome to Shadow Cakes Pricing Tool
-        </p>
       </header>
       
       <div className="p-8">
