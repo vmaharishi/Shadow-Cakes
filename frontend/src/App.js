@@ -7,6 +7,7 @@ import RecipeDetailPage from "@/pages/RecipeDetailPage";
 import IngredientsPage from "@/pages/IngredientsPage";
 import PackagingPage from "@/pages/PackagingPage";
 import ComponentsPage from "@/pages/ComponentsPage";
+import SalesPage from "@/pages/SalesPage";
 import ImportPage from "@/pages/ImportPage";
 import SettingsPage from "@/pages/SettingsPage";
 import { Toaster } from "@/components/ui/sonner";
@@ -23,6 +24,7 @@ function App() {
             <Route path="ingredients" element={<IngredientsPage />} />
             <Route path="packaging" element={<PackagingPage />} />
             <Route path="components" element={<ComponentsPage />} />
+            <Route path="sales" element={<SalesPage />} />
             <Route path="import" element={<ImportPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>

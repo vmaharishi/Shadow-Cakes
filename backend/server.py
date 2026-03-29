@@ -136,6 +136,21 @@ class CostBreakdown(BaseModel):
     selling_price: Optional[float] = None
     profit_margin: Optional[float] = None
 
+class Sale(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    recipe_id: str
+    recipe_name: str
+    variant_name: str
+    sale_date: str
+    customer_name: str = ""
+    notes: str = ""
+    selling_price: float
+    total_cost: float
+    profit: float
+    profit_margin: float
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
 # ==================== HELPER FUNCTIONS ====================
 
 async def get_settings() -> Settings:
@@ -755,6 +770,34 @@ async def bulk_delete_components(request: BulkDeleteRequest):
     deleted_count = 0
     for comp_id in request.ids:
         result = await db.component_recipes.delete_one({"id": comp_id})
+        if result.deleted_count > 0:
+            deleted_count += 1
+    return {"status": "success", "deleted_count": deleted_count}
+
+# ---------- SALES ----------
+@api_router.get("/sales", response_model=List[Sale])
+async def get_sales():
+    docs = await db.sales.find({}, {"_id": 0}).sort("sale_date", -1).to_list(5000)
+    return docs
+
+@api_router.post("/sales", response_model=Sale)
+async def create_sale(sale: Sale):
+    await db.sales.insert_one(sale.model_dump())
+    return sale
+
+@api_router.delete("/sales/{sale_id}")
+async def delete_sale(sale_id: str):
+    result = await db.sales.delete_one({"id": sale_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Sale not found")
+    return {"status": "deleted"}
+
+@api_router.post("/sales/bulk-delete")
+async def bulk_delete_sales(request: BulkDeleteRequest):
+    """Delete multiple sales"""
+    deleted_count = 0
+    for sale_id in request.ids:
+        result = await db.sales.delete_one({"id": sale_id})
         if result.deleted_count > 0:
             deleted_count += 1
     return {"status": "success", "deleted_count": deleted_count}

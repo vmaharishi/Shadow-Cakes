@@ -6,7 +6,8 @@ import {
   Package, 
   Flask, 
   Upload, 
-  Gear
+  Gear,
+  Receipt
 } from "@phosphor-icons/react";
 
 const navItems = [
@@ -15,6 +16,7 @@ const navItems = [
   { path: "/ingredients", label: "Ingredients", icon: Carrot },
   { path: "/packaging", label: "Packaging", icon: Package },
   { path: "/components", label: "Components", icon: Flask },
+  { path: "/sales", label: "Sales", icon: Receipt },
   { path: "/import", label: "Import", icon: Upload },
   { path: "/settings", label: "Settings", icon: Gear },
 ];

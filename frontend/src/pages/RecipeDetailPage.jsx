@@ -15,7 +15,11 @@ import {
   Fire,
   Warning,
   PencilSimple,
-  Check
+  Check,
+  Receipt,
+  Calendar,
+  User,
+  Note
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -65,6 +70,14 @@ export default function RecipeDetailPage() {
   const [newVariant, setNewVariant] = useState({ name: "", prep_time_minutes: 0 });
   const [editingPrepTime, setEditingPrepTime] = useState(false);
   const [tempPrepTime, setTempPrepTime] = useState(0);
+  
+  // Sale recording state
+  const [saleDialogOpen, setSaleDialogOpen] = useState(false);
+  const [newSale, setNewSale] = useState({
+    sale_date: new Date().toISOString().split('T')[0],
+    customer_name: "",
+    notes: ""
+  });
 
   const fetchRecipe = useCallback(async () => {
     try {
@@ -320,6 +333,41 @@ export default function RecipeDetailPage() {
     });
     await handleSaveRecipe({ ...recipe, variants: updatedVariants });
     setEditingPrepTime(false);
+  };
+
+  const handleRecordSale = async () => {
+    if (!costBreakdown || !costBreakdown.breakdown.selling_price) {
+      toast.error("Please enter a selling price first");
+      return;
+    }
+    
+    try {
+      const profit = costBreakdown.breakdown.selling_price - costBreakdown.breakdown.total_cost;
+      const saleData = {
+        recipe_id: recipeId,
+        recipe_name: recipe.name,
+        variant_name: selectedVariant?.name || "",
+        sale_date: newSale.sale_date,
+        customer_name: newSale.customer_name,
+        notes: newSale.notes,
+        selling_price: costBreakdown.breakdown.selling_price,
+        total_cost: costBreakdown.breakdown.total_cost,
+        profit: profit,
+        profit_margin: costBreakdown.breakdown.profit_margin
+      };
+      
+      await axios.post(`${API}/sales`, saleData);
+      toast.success("Sale recorded successfully!");
+      setSaleDialogOpen(false);
+      setNewSale({
+        sale_date: new Date().toISOString().split('T')[0],
+        customer_name: "",
+        notes: ""
+      });
+    } catch (error) {
+      console.error("Error recording sale:", error);
+      toast.error("Failed to record sale");
+    }
   };
 
   const getPricesForIngredient = (ingredientId) => {
@@ -961,6 +1009,115 @@ export default function RecipeDetailPage() {
                             ${(costBreakdown.breakdown.selling_price - costBreakdown.breakdown.total_cost).toFixed(2)}
                           </span>
                         </div>
+                        
+                        {/* Record a Sale Button */}
+                        <Dialog open={saleDialogOpen} onOpenChange={setSaleDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button 
+                              className="w-full mt-4 bg-[#2C1E16] hover:bg-[#3E2A1F] text-white"
+                              data-testid="record-sale-btn"
+                            >
+                              <Receipt className="w-4 h-4 mr-2" />
+                              Record a Sale
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="bg-white border-[#E8E3D9]">
+                            <DialogHeader>
+                              <DialogTitle className="font-outfit">Record a Sale</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 mt-4">
+                              {/* Auto-populated fields */}
+                              <div className="p-4 rounded-lg bg-[#F4F1EA] space-y-3">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-[#5C554D]">Recipe</span>
+                                  <span className="font-medium">{recipe.name} - {selectedVariant?.name}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-[#5C554D]">Total Cost</span>
+                                  <span className="font-mono">${costBreakdown.breakdown.total_cost.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-[#5C554D]">Selling Price</span>
+                                  <span className="font-mono">${costBreakdown.breakdown.selling_price.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-[#5C554D]">Profit</span>
+                                  <span className={`font-mono font-medium ${
+                                    costBreakdown.breakdown.profit_margin >= 0 ? "text-[#4A6B53]" : "text-[#A63C3C]"
+                                  }`}>
+                                    ${(costBreakdown.breakdown.selling_price - costBreakdown.breakdown.total_cost).toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-[#5C554D]">Profit Margin</span>
+                                  <span className={`font-medium ${
+                                    costBreakdown.breakdown.profit_margin >= 0 ? "text-[#4A6B53]" : "text-[#A63C3C]"
+                                  }`}>
+                                    {costBreakdown.breakdown.profit_margin.toFixed(1)}%
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              {/* User input fields */}
+                              <div>
+                                <label className="form-label flex items-center gap-2">
+                                  <Calendar className="w-4 h-4" />
+                                  Sale Date
+                                </label>
+                                <Input
+                                  type="date"
+                                  value={newSale.sale_date}
+                                  onChange={(e) => setNewSale({ ...newSale, sale_date: e.target.value })}
+                                  className="form-input"
+                                  data-testid="sale-date-input"
+                                />
+                              </div>
+                              <div>
+                                <label className="form-label flex items-center gap-2">
+                                  <User className="w-4 h-4" />
+                                  Customer Name
+                                </label>
+                                <Input
+                                  value={newSale.customer_name}
+                                  onChange={(e) => setNewSale({ ...newSale, customer_name: e.target.value })}
+                                  placeholder="Optional"
+                                  className="form-input"
+                                  data-testid="sale-customer-input"
+                                />
+                              </div>
+                              <div>
+                                <label className="form-label flex items-center gap-2">
+                                  <Note className="w-4 h-4" />
+                                  Notes
+                                </label>
+                                <Input
+                                  value={newSale.notes}
+                                  onChange={(e) => setNewSale({ ...newSale, notes: e.target.value })}
+                                  placeholder="Optional notes..."
+                                  className="form-input"
+                                  data-testid="sale-notes-input"
+                                />
+                              </div>
+                            </div>
+                            <DialogFooter className="mt-6 flex gap-2">
+                              <Button 
+                                variant="outline"
+                                onClick={() => setSaleDialogOpen(false)}
+                                className="flex-1 border-[#E8E3D9]"
+                                data-testid="cancel-sale-btn"
+                              >
+                                Cancel
+                              </Button>
+                              <Button 
+                                onClick={handleRecordSale}
+                                className="flex-1 bg-[#4A6B53] hover:bg-[#3d5a45] text-white"
+                                data-testid="save-sale-btn"
+                              >
+                                Save
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
                       </div>
                     )}
                   </div>
