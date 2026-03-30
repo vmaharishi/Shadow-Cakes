@@ -58,13 +58,6 @@ export default function Layout() {
             ))}
           </nav>
         </div>
-        
-        {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-[#E8E3D9]">
-          <p className="text-xs text-[#5C554D]">
-            Currency: <span className="font-mono font-medium">CAD ($)</span>
-          </p>
-        </div>
       </aside>
       
       {/* Main content */}
