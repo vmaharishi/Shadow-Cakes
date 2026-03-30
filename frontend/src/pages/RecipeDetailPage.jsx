@@ -868,8 +868,7 @@ export default function RecipeDetailPage() {
           {/* Right Column - Cost Breakdown */}
           <div className="space-y-6">
             <div className="card-flat p-6 sticky top-8">
-              <h3 className="font-outfit font-medium text-lg text-[#1A1A1A] mb-4 flex items-center gap-2">
-                <CurrencyDollar className="w-5 h-5 text-[#C57B57]" />
+              <h3 className="font-outfit font-medium text-lg text-[#1A1A1A] mb-4">
                 Cost Breakdown
               </h3>
               
@@ -880,8 +879,7 @@ export default function RecipeDetailPage() {
                   {/* Ingredients */}
                   {costBreakdown.breakdown.ingredient_costs.length > 0 && (
                     <div>
-                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#5C554D] mb-2">
-                        <Carrot className="w-4 h-4" />
+                      <div className="text-xs font-bold uppercase tracking-wider text-[#5C554D] mb-2">
                         Ingredients
                       </div>
                       {costBreakdown.breakdown.ingredient_costs.map((item, idx) => (
@@ -906,8 +904,7 @@ export default function RecipeDetailPage() {
                   {/* Packaging */}
                   {costBreakdown.breakdown.packaging_costs.length > 0 && (
                     <div>
-                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#5C554D] mb-2">
-                        <Package className="w-4 h-4" />
+                      <div className="text-xs font-bold uppercase tracking-wider text-[#5C554D] mb-2">
                         Packaging
                       </div>
                       {costBreakdown.breakdown.packaging_costs.map((item, idx) => (
@@ -926,8 +923,7 @@ export default function RecipeDetailPage() {
                   {/* Components */}
                   {costBreakdown.breakdown.component_costs.length > 0 && (
                     <div>
-                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#5C554D] mb-2">
-                        <Flask className="w-4 h-4" />
+                      <div className="text-xs font-bold uppercase tracking-wider text-[#5C554D] mb-2">
                         Components
                       </div>
                       {costBreakdown.breakdown.component_costs.map((item, idx) => (
@@ -945,20 +941,17 @@ export default function RecipeDetailPage() {
                   
                   {/* Labour & Utilities */}
                   <div>
-                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#5C554D] mb-2">
-                      <Lightning className="w-4 h-4" />
+                    <div className="text-xs font-bold uppercase tracking-wider text-[#5C554D] mb-2">
                       Labour & Utilities
                     </div>
                     <div className="cost-line text-sm">
-                      <span className="flex items-center gap-1">
-                        <Fire className="w-3 h-3" />
+                      <span>
                         Labour ({costBreakdown.prep_time_minutes} min @ ${costBreakdown.settings.labour_rate_per_hour}/hr)
                       </span>
                       <span className="font-mono">${costBreakdown.breakdown.labour_cost.toFixed(2)}</span>
                     </div>
                     <div className="cost-line text-sm">
-                      <span className="flex items-center gap-1">
-                        <Lightning className="w-3 h-3" />
+                      <span>
                         Utilities ({costBreakdown.prep_time_minutes} min @ ${costBreakdown.settings.utility_rate_per_hour}/hr)
                       </span>
                       <span className="font-mono">${costBreakdown.breakdown.utility_cost.toFixed(2)}</span>
