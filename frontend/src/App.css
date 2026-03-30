@@ -111,6 +111,10 @@
     outline: none;
 }
 
+.form-input.pl-10 {
+    padding-left: 2.5rem;
+}
+
 .form-input:focus {
     border-color: #C57B57;
     box-shadow: 0 0 0 3px rgba(197, 123, 87, 0.15);
