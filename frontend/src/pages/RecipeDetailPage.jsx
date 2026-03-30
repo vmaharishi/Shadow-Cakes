@@ -875,87 +875,39 @@ export default function RecipeDetailPage() {
               {costLoading ? (
                 <div className="text-center py-8 text-[#5C554D]">Calculating...</div>
               ) : costBreakdown ? (
-                <div className="space-y-4">
-                  {/* Ingredients */}
-                  {costBreakdown.breakdown.ingredient_costs.length > 0 && (
-                    <div>
-                      <div className="text-xs font-bold uppercase tracking-wider text-[#5C554D] mb-2">
-                        Ingredients
+                <div className="space-y-1">
+                  {/* All items in a flat list */}
+                  {costBreakdown.breakdown.ingredient_costs.map((item, idx) => (
+                    <div key={`ing-${idx}`} className="cost-line text-sm">
+                      <div className="flex flex-col">
+                        <span>{item.ingredient_name}</span>
+                        <span className="text-xs text-[#5C554D]">
+                          {item.store_vendor}{item.brand ? ` - ${item.brand}` : ''}
+                          {item.is_override && <span className="badge-override ml-1 text-[10px]">Override</span>}
+                        </span>
                       </div>
-                      {costBreakdown.breakdown.ingredient_costs.map((item, idx) => (
-                        <div key={idx} className="cost-line text-sm">
-                          <div className="flex flex-col">
-                            <span>{item.ingredient_name}</span>
-                            <span className="text-xs text-[#5C554D]">
-                              {item.store_vendor}{item.brand ? ` - ${item.brand}` : ''}
-                              {item.is_override && <span className="badge-override ml-1 text-[10px]">Override</span>}
-                            </span>
-                          </div>
-                          <span className="font-mono">${item.cost.toFixed(2)}</span>
-                        </div>
-                      ))}
-                      <div className="cost-line font-medium pt-2">
-                        <span>Subtotal</span>
-                        <span className="font-mono">${costBreakdown.breakdown.total_ingredient_cost.toFixed(2)}</span>
-                      </div>
+                      <span className="font-mono">${item.cost.toFixed(2)}</span>
                     </div>
-                  )}
-                  
-                  {/* Packaging */}
-                  {costBreakdown.breakdown.packaging_costs.length > 0 && (
-                    <div>
-                      <div className="text-xs font-bold uppercase tracking-wider text-[#5C554D] mb-2">
-                        Packaging
-                      </div>
-                      {costBreakdown.breakdown.packaging_costs.map((item, idx) => (
-                        <div key={idx} className="cost-line text-sm">
-                          <span>{item.packaging_name} ×{item.quantity}</span>
-                          <span className="font-mono">${item.cost.toFixed(2)}</span>
-                        </div>
-                      ))}
-                      <div className="cost-line font-medium pt-2">
-                        <span>Subtotal</span>
-                        <span className="font-mono">${costBreakdown.breakdown.total_packaging_cost.toFixed(2)}</span>
-                      </div>
+                  ))}
+                  {costBreakdown.breakdown.packaging_costs.map((item, idx) => (
+                    <div key={`pkg-${idx}`} className="cost-line text-sm">
+                      <span>{item.packaging_name} ×{item.quantity}</span>
+                      <span className="font-mono">${item.cost.toFixed(2)}</span>
                     </div>
-                  )}
-                  
-                  {/* Components */}
-                  {costBreakdown.breakdown.component_costs.length > 0 && (
-                    <div>
-                      <div className="text-xs font-bold uppercase tracking-wider text-[#5C554D] mb-2">
-                        Components
-                      </div>
-                      {costBreakdown.breakdown.component_costs.map((item, idx) => (
-                        <div key={idx} className="cost-line text-sm">
-                          <span>{item.component_name}</span>
-                          <span className="font-mono">${item.cost.toFixed(2)}</span>
-                        </div>
-                      ))}
-                      <div className="cost-line font-medium pt-2">
-                        <span>Subtotal</span>
-                        <span className="font-mono">${costBreakdown.breakdown.total_component_cost.toFixed(2)}</span>
-                      </div>
+                  ))}
+                  {costBreakdown.breakdown.component_costs.map((item, idx) => (
+                    <div key={`comp-${idx}`} className="cost-line text-sm">
+                      <span>{item.component_name}</span>
+                      <span className="font-mono">${item.cost.toFixed(2)}</span>
                     </div>
-                  )}
-                  
-                  {/* Labour & Utilities */}
-                  <div>
-                    <div className="text-xs font-bold uppercase tracking-wider text-[#5C554D] mb-2">
-                      Labour & Utilities
-                    </div>
-                    <div className="cost-line text-sm">
-                      <span>
-                        Labour ({costBreakdown.prep_time_minutes} min @ ${costBreakdown.settings.labour_rate_per_hour}/hr)
-                      </span>
-                      <span className="font-mono">${costBreakdown.breakdown.labour_cost.toFixed(2)}</span>
-                    </div>
-                    <div className="cost-line text-sm">
-                      <span>
-                        Utilities ({costBreakdown.prep_time_minutes} min @ ${costBreakdown.settings.utility_rate_per_hour}/hr)
-                      </span>
-                      <span className="font-mono">${costBreakdown.breakdown.utility_cost.toFixed(2)}</span>
-                    </div>
+                  ))}
+                  <div className="cost-line text-sm">
+                    <span>Labour ({costBreakdown.prep_time_minutes} min @ ${costBreakdown.settings.labour_rate_per_hour}/hr)</span>
+                    <span className="font-mono">${costBreakdown.breakdown.labour_cost.toFixed(2)}</span>
+                  </div>
+                  <div className="cost-line text-sm">
+                    <span>Utilities ({costBreakdown.prep_time_minutes} min @ ${costBreakdown.settings.utility_rate_per_hour}/hr)</span>
+                    <span className="font-mono">${costBreakdown.breakdown.utility_cost.toFixed(2)}</span>
                   </div>
                   
                   {/* Total */}
