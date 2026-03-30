@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { 
   Cake, 
@@ -9,8 +8,7 @@ import {
   Gear,
   Receipt,
   WifiSlash,
-  ArrowsClockwise,
-  DownloadSimple
+  ArrowsClockwise
 } from "@phosphor-icons/react";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 
@@ -26,25 +24,6 @@ const navItems = [
 
 export default function Layout() {
   const { isOnline, pendingCount } = useOnlineStatus();
-  const [installPrompt, setInstallPrompt] = useState(null);
-
-  useEffect(() => {
-    const handler = (e) => {
-      e.preventDefault();
-      setInstallPrompt(e);
-    };
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
-
-  const handleInstall = async () => {
-    if (!installPrompt) return;
-    installPrompt.prompt();
-    const result = await installPrompt.userChoice;
-    if (result.outcome === "accepted") {
-      setInstallPrompt(null);
-    }
-  };
 
   return (
     <div className="app-container flex" data-testid="app-layout">
@@ -67,7 +46,7 @@ export default function Layout() {
 
       {/* Sidebar */}
       <aside className={`sidebar w-64 flex-shrink-0 fixed h-full ${!isOnline ? 'pt-10' : ''}`} data-testid="sidebar">
-        <div className="p-6 flex flex-col h-full">
+        <div className="p-6">
           <div className="flex items-center gap-3 mb-8">
             <img 
               src="/icon-96x96.png" 
@@ -82,7 +61,7 @@ export default function Layout() {
             </div>
           </div>
           
-          <nav className="space-y-1 flex-1">
+          <nav className="space-y-1">
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
@@ -98,18 +77,6 @@ export default function Layout() {
               </NavLink>
             ))}
           </nav>
-
-          {/* Install App Button */}
-          {installPrompt && (
-            <button
-              onClick={handleInstall}
-              className="mt-4 mb-2 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#2C1E16] text-white text-sm font-medium hover:bg-[#3E2A1F] transition-colors"
-              data-testid="install-pwa-btn"
-            >
-              <DownloadSimple className="w-4 h-4" />
-              Install App
-            </button>
-          )}
         </div>
       </aside>
       

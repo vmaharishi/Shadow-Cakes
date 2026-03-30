@@ -5,15 +5,18 @@ import {
   CurrencyDollar,
   Lightning,
   Fire,
-  Check
+  Check,
+  DownloadSimple
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { usePWA } from "@/hooks/usePWA";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function SettingsPage() {
+  const { installPrompt, handleInstall } = usePWA();
   const [settings, setSettings] = useState({
     labour_rate_per_hour: 10,
     utility_rate_per_hour: 1,
@@ -187,6 +190,33 @@ export default function SettingsPage() {
             )}
           </Button>
         </div>
+
+        {/* Install App */}
+        {installPrompt && (
+          <div className="card-flat p-6 mt-6">
+            <div className="flex items-center gap-3 pb-4 border-b border-[#E8E3D9]">
+              <div className="w-10 h-10 rounded-lg bg-[#C57B57]/10 flex items-center justify-center">
+                <DownloadSimple className="w-5 h-5 text-[#C57B57]" weight="duotone" />
+              </div>
+              <div>
+                <h2 className="font-outfit font-medium text-lg text-[#1A1A1A]">
+                  Install App
+                </h2>
+                <p className="text-sm text-[#5C554D]">
+                  Install Shadow Cakes as a standalone app on your device
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={handleInstall}
+              className="w-full mt-4 bg-[#2C1E16] hover:bg-[#3E2A1F] text-white"
+              data-testid="install-pwa-btn"
+            >
+              <DownloadSimple className="w-4 h-4 mr-2" />
+              Install Shadow Cakes
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -10,10 +10,12 @@ import ComponentsPage from "@/pages/ComponentsPage";
 import ImportPage from "@/pages/ImportPage";
 import SettingsPage from "@/pages/SettingsPage";
 import { Toaster } from "@/components/ui/sonner";
+import { PWAProvider } from "@/hooks/usePWA";
 
 function App() {
   return (
     <div className="App">
+      <PWAProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Layout />}>
@@ -28,6 +30,7 @@ function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      </PWAProvider>
       <Toaster position="top-right" />
     </div>
   );
