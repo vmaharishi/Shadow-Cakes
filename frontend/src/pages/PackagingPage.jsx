@@ -7,7 +7,8 @@ import {
   Trash,
   PencilSimple,
   CheckSquare,
-  X
+  X,
+  Export
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -135,6 +136,36 @@ export default function PackagingPage() {
     }
   };
 
+  const handleExport = () => {
+    if (packaging.length === 0) {
+      toast.error("No packaging to export");
+      return;
+    }
+    
+    const headers = ["Name", "Unit Cost", "Unit", "Notes"];
+    const rows = packaging.map(pkg => [
+      pkg.name,
+      pkg.unit_cost.toFixed(2),
+      pkg.unit,
+      (pkg.notes || "").replace(/,/g, ";")
+    ]);
+    
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+    ].join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `packaging_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    toast.success("Packaging exported");
+  };
+
   const toggleSelection = (id) => {
     const newSelected = new Set(selectedIds);
     if (newSelected.has(id)) {
@@ -198,6 +229,15 @@ export default function PackagingPage() {
             </>
           ) : (
             <>
+              <Button 
+                onClick={handleExport}
+                variant="outline"
+                className="border-[#E8E3D9]"
+                data-testid="export-packaging-btn"
+              >
+                <Export className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
               <Button 
                 onClick={() => setIsSelectionMode(true)}
                 variant="outline"

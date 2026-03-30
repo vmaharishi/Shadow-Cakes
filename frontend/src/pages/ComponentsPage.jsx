@@ -9,7 +9,8 @@ import {
   Carrot,
   Clock,
   CheckSquare,
-  X
+  X,
+  Export
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -144,6 +145,37 @@ export default function ComponentsPage() {
     }
   };
 
+  const handleExport = () => {
+    if (components.length === 0) {
+      toast.error("No components to export");
+      return;
+    }
+    
+    const headers = ["Component Name", "Batch Yield (g)", "Prep Time (min)", "Ingredients", "Notes"];
+    const rows = components.map(comp => [
+      comp.name,
+      comp.batch_yield_grams || 0,
+      comp.prep_time_minutes || 0,
+      comp.ingredients?.map(i => `${i.ingredient_name} (${i.quantity} ${i.unit})`).join("; ") || "",
+      (comp.notes || "").replace(/,/g, ";")
+    ]);
+    
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+    ].join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `components_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    toast.success("Components exported");
+  };
+
   const toggleSelection = (id) => {
     const newSelected = new Set(selectedIds);
     if (newSelected.has(id)) {
@@ -236,6 +268,15 @@ export default function ComponentsPage() {
             </>
           ) : (
             <>
+              <Button 
+                onClick={handleExport}
+                variant="outline"
+                className="border-[#E8E3D9]"
+                data-testid="export-components-btn"
+              >
+                <Export className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
               <Button 
                 onClick={() => setIsSelectionMode(true)}
                 variant="outline"

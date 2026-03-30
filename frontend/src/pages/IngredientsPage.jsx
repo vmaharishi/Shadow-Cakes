@@ -8,7 +8,8 @@ import {
   Storefront,
   CheckSquare,
   Square,
-  X
+  X,
+  Export
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,6 +122,62 @@ export default function IngredientsPage() {
     }
   };
 
+  const handleExport = () => {
+    if (ingredients.length === 0) {
+      toast.error("No ingredients to export");
+      return;
+    }
+    
+    const headers = ["Ingredient Name", "Default Unit", "Store/Vendor", "Brand", "Purchase Price", "Package Size", "Unit", "Unit Cost", "Notes"];
+    const rows = [];
+    
+    ingredients.forEach(ing => {
+      const ingPrices = prices.filter(p => p.ingredient_id === ing.id);
+      if (ingPrices.length > 0) {
+        ingPrices.forEach(price => {
+          rows.push([
+            ing.name,
+            ing.default_unit,
+            price.store_vendor,
+            price.notes || "",
+            price.purchase_price.toFixed(2),
+            price.package_size,
+            price.unit,
+            price.unit_cost.toFixed(4),
+            ing.notes || ""
+          ]);
+        });
+      } else {
+        rows.push([
+          ing.name,
+          ing.default_unit,
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ing.notes || ""
+        ]);
+      }
+    });
+    
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+    ].join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `ingredients_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    toast.success("Ingredients exported");
+  };
+
   const handleAddPrice = async () => {
     if (!newPrice.store_vendor || !newPrice.purchase_price || !newPrice.package_size) {
       toast.error("Please fill all required fields");
@@ -229,6 +286,15 @@ export default function IngredientsPage() {
             </>
           ) : (
             <>
+              <Button 
+                onClick={handleExport}
+                variant="outline"
+                className="border-[#E8E3D9]"
+                data-testid="export-ingredients-btn"
+              >
+                <Export className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
               <Button 
                 onClick={() => setIsSelectionMode(true)}
                 variant="outline"

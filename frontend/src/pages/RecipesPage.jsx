@@ -7,7 +7,8 @@ import {
   MagnifyingGlass,
   DotsThreeVertical,
   Trash,
-  PencilSimple
+  PencilSimple,
+  Export
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,6 +97,36 @@ export default function RecipesPage() {
     }
   };
 
+  const handleExport = () => {
+    if (recipes.length === 0) {
+      toast.error("No recipes to export");
+      return;
+    }
+    
+    const headers = ["Recipe Name", "Category", "Variants", "Notes"];
+    const rows = recipes.map(recipe => [
+      recipe.name,
+      recipe.category || "",
+      recipe.variants?.map(v => v.name).join("; ") || "",
+      (recipe.notes || "").replace(/,/g, ";")
+    ]);
+    
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+    ].join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `recipes_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    toast.success("Recipes exported");
+  };
+
   const filteredRecipes = recipes.filter(recipe =>
     recipe.name.toLowerCase().includes(search.toLowerCase()) ||
     recipe.category?.toLowerCase().includes(search.toLowerCase())
@@ -110,7 +141,17 @@ export default function RecipesPage() {
             {recipes.length} recipe{recipes.length !== 1 ? "s" : ""} in your library
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={handleExport}
+            variant="outline"
+            className="border-[#E8E3D9]"
+            data-testid="export-recipes-btn"
+          >
+            <Export className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button 
               className="bg-[#2C1E16] hover:bg-[#3E2A1F] text-white"
@@ -186,6 +227,7 @@ export default function RecipesPage() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </header>
       
       <div className="p-8">
