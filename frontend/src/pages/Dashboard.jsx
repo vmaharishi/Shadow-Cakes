@@ -62,13 +62,6 @@ export default function Dashboard() {
 
   const salesCards = [
     {
-      label: "Total Sales",
-      value: salesSummary.total_sales,
-      format: "count",
-      icon: Receipt,
-      color: "#2C1E16"
-    },
-    {
       label: "Total Revenue",
       value: salesSummary.total_revenue,
       format: "currency",
@@ -83,7 +76,7 @@ export default function Dashboard() {
       color: "#C57B57"
     },
     {
-      label: "Total Hourly Pay",
+      label: "Total Wages",
       value: salesSummary.total_hourly_pay,
       format: "currency",
       icon: Clock,
@@ -141,7 +134,7 @@ export default function Dashboard() {
           <h2 className="font-outfit font-medium text-sm uppercase tracking-wider text-[#5C554D] mb-4">
             Sales Overview
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {salesCards.map((card, index) => (
               <Link
                 key={card.label}
