@@ -45,11 +45,11 @@ const ImportSection = ({
     e.preventDefault();
     setDragging(false);
     const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && (droppedFile.name.endsWith('.xlsx') || droppedFile.name.endsWith('.xls'))) {
+    if (droppedFile && (droppedFile.name.endsWith('.xlsx') || droppedFile.name.endsWith('.xls') || droppedFile.name.endsWith('.csv'))) {
       setFile(droppedFile);
       setResult(null);
     } else {
-      toast.error("Please upload an Excel file (.xlsx)");
+      toast.error("Please upload a CSV or Excel file (.csv, .xlsx)");
     }
   };
 
@@ -150,14 +150,14 @@ const ImportSection = ({
           <>
             <Upload className="w-10 h-10 text-[#5C554D] mx-auto mb-3" weight="duotone" />
             <p className="text-[#1A1A1A] font-medium mb-1">
-              Drag & drop your Excel file here
+              Drag & drop your CSV or Excel file here
             </p>
             <p className="text-sm text-[#5C554D] mb-3">or</p>
             <label className="btn-secondary cursor-pointer inline-block">
               Browse Files
               <input
                 type="file"
-                accept=".xlsx,.xls"
+                accept=".csv,.xlsx,.xls"
                 onChange={handleFileSelect}
                 className="hidden"
                 data-testid={`file-input-${endpoint.replace("/import/", "")}`}

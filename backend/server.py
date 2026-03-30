@@ -9,8 +9,9 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
-from io import BytesIO
+from io import BytesIO, StringIO
 import openpyxl
+import csv
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -25,6 +26,30 @@ app = FastAPI()
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
+
+# ==================== FILE PARSING HELPER ====================
+
+def parse_uploaded_file(content: bytes, filename: str) -> tuple[list, list]:
+    """Parse CSV or XLSX file and return headers and rows"""
+    if filename.endswith('.csv'):
+        # Parse CSV
+        text = content.decode('utf-8-sig')  # Handle BOM
+        reader = csv.reader(StringIO(text))
+        rows = list(reader)
+        if not rows:
+            return [], []
+        headers = [h.lower().strip() for h in rows[0]]
+        data_rows = rows[1:]
+        return headers, data_rows
+    elif filename.endswith(('.xlsx', '.xls')):
+        # Parse Excel
+        wb = openpyxl.load_workbook(BytesIO(content))
+        ws = wb.active
+        headers = [cell.value.lower().strip() if cell.value else "" for cell in ws[1]]
+        data_rows = list(ws.iter_rows(min_row=2, values_only=True))
+        return headers, data_rows
+    else:
+        raise HTTPException(status_code=400, detail="Please upload a CSV or Excel file (.csv, .xlsx)")
 
 # ==================== MODELS ====================
 
@@ -504,17 +529,12 @@ async def calculate_variant_cost(recipe_id: str, variant_id: str, selling_price:
 @api_router.post("/import/ingredients")
 async def import_ingredient_pricing(file: UploadFile = File(...)):
     """
-    Import ingredient pricing from Excel.
+    Import ingredient pricing from CSV or Excel.
     Expected columns: ingredient_name, store_vendor, purchase_price, package_size, unit, purchase_date, brand
     """
-    if not file.filename.endswith(('.xlsx', '.xls')):
-        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx)")
-    
     content = await file.read()
-    wb = openpyxl.load_workbook(BytesIO(content))
-    ws = wb.active
+    headers, data_rows = parse_uploaded_file(content, file.filename)
     
-    headers = [cell.value.lower().strip() if cell.value else "" for cell in ws[1]]
     required = ["ingredient_name", "store_vendor", "purchase_price", "package_size", "unit"]
     missing = [r for r in required if r not in headers]
     if missing:
@@ -528,17 +548,17 @@ async def import_ingredient_pricing(file: UploadFile = File(...)):
     prices_added = 0
     errors = []
     
-    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+    for row_idx, row in enumerate(data_rows, start=2):
         try:
-            row_dict = {headers[i]: row[i] for i in range(len(headers)) if i < len(row)}
+            row_dict = {headers[i]: row[i] if i < len(row) else None for i in range(len(headers))}
             
-            ingredient_name = str(row_dict.get("ingredient_name", "")).strip()
+            ingredient_name = str(row_dict.get("ingredient_name", "") or "").strip()
             if not ingredient_name or ingredient_name.lower() == "none":
                 continue
             
             # Create or get ingredient
             if ingredient_name not in ingredients_map:
-                ingredient = Ingredient(name=ingredient_name, default_unit=str(row_dict.get("unit", "g")))
+                ingredient = Ingredient(name=ingredient_name, default_unit=str(row_dict.get("unit", "g") or "g"))
                 await db.ingredients.insert_one(ingredient.model_dump())
                 ingredients_map[ingredient_name] = ingredient.id
             
@@ -558,10 +578,10 @@ async def import_ingredient_pricing(file: UploadFile = File(...)):
             price = IngredientPrice(
                 ingredient_id=ingredient_id,
                 ingredient_name=ingredient_name,
-                store_vendor=str(row_dict.get("store_vendor", "Default")),
+                store_vendor=str(row_dict.get("store_vendor", "Default") or "Default"),
                 purchase_price=purchase_price,
                 package_size=package_size,
-                unit=str(row_dict.get("unit", "g")),
+                unit=str(row_dict.get("unit", "g") or "g"),
                 unit_cost=unit_cost,
                 purchase_date=purchase_date,
                 is_latest=True,
@@ -583,17 +603,12 @@ async def import_ingredient_pricing(file: UploadFile = File(...)):
 @api_router.post("/import/recipes")
 async def import_recipes(file: UploadFile = File(...)):
     """
-    Import recipes from Excel.
+    Import recipes from CSV or Excel.
     Expected columns: recipe_name, variant_name, ingredient_name, quantity, unit, prep_time_minutes, category, notes
     """
-    if not file.filename.endswith(('.xlsx', '.xls')):
-        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx)")
-    
     content = await file.read()
-    wb = openpyxl.load_workbook(BytesIO(content))
-    ws = wb.active
+    headers, data_rows = parse_uploaded_file(content, file.filename)
     
-    headers = [cell.value.lower().strip() if cell.value else "" for cell in ws[1]]
     required = ["recipe_name", "variant_name", "ingredient_name", "quantity", "unit"]
     missing = [r for r in required if r not in headers]
     if missing:
@@ -609,13 +624,13 @@ async def import_recipes(file: UploadFile = File(...)):
     
     errors = []
     
-    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+    for row_idx, row in enumerate(data_rows, start=2):
         try:
-            row_dict = {headers[i]: row[i] for i in range(len(headers)) if i < len(row)}
+            row_dict = {headers[i]: row[i] if i < len(row) else None for i in range(len(headers))}
             
-            recipe_name = str(row_dict.get("recipe_name", "")).strip()
-            variant_name = str(row_dict.get("variant_name", "")).strip()
-            ingredient_name = str(row_dict.get("ingredient_name", "")).strip()
+            recipe_name = str(row_dict.get("recipe_name", "") or "").strip()
+            variant_name = str(row_dict.get("variant_name", "") or "").strip()
+            ingredient_name = str(row_dict.get("ingredient_name", "") or "").strip()
             
             if not recipe_name or not variant_name:
                 continue
@@ -654,7 +669,7 @@ async def import_recipes(file: UploadFile = File(...)):
                 
                 if not ingredient_id:
                     # Create ingredient if not exists
-                    new_ing = Ingredient(name=ingredient_name, default_unit=str(row_dict.get("unit", "g")))
+                    new_ing = Ingredient(name=ingredient_name, default_unit=str(row_dict.get("unit", "g") or "g"))
                     await db.ingredients.insert_one(new_ing.model_dump())
                     ingredients_lookup[ingredient_key] = new_ing.model_dump()
                     ingredient_id = new_ing.id
@@ -663,7 +678,7 @@ async def import_recipes(file: UploadFile = File(...)):
                     ingredient_id=ingredient_id,
                     ingredient_name=ingredient_name,
                     quantity=float(row_dict.get("quantity", 0) or 0),
-                    unit=str(row_dict.get("unit", "g"))
+                    unit=str(row_dict.get("unit", "g") or "g")
                 )
                 variant.ingredients.append(line_item)
                 
@@ -686,17 +701,12 @@ async def import_recipes(file: UploadFile = File(...)):
 @api_router.post("/import/packaging")
 async def import_packaging(file: UploadFile = File(...)):
     """
-    Import packaging from Excel (same format as ingredients).
+    Import packaging from CSV or Excel (same format as ingredients).
     Expected columns: packaging_name, store_vendor, purchase_price, package_size, unit, purchase_date, notes
     """
-    if not file.filename.endswith(('.xlsx', '.xls')):
-        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx)")
-    
     content = await file.read()
-    wb = openpyxl.load_workbook(BytesIO(content))
-    ws = wb.active
+    headers, data_rows = parse_uploaded_file(content, file.filename)
     
-    headers = [cell.value.lower().strip() if cell.value else "" for cell in ws[1]]
     required = ["packaging_name", "store_vendor", "purchase_price", "package_size", "unit"]
     missing = [r for r in required if r not in headers]
     if missing:
@@ -708,11 +718,11 @@ async def import_packaging(file: UploadFile = File(...)):
     items_added = 0
     errors = []
     
-    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+    for row_idx, row in enumerate(data_rows, start=2):
         try:
-            row_dict = {headers[i]: row[i] for i in range(len(headers)) if i < len(row)}
+            row_dict = {headers[i]: row[i] if i < len(row) else None for i in range(len(headers))}
             
-            name = str(row_dict.get("packaging_name", "")).strip()
+            name = str(row_dict.get("packaging_name", "") or "").strip()
             if not name or name.lower() == "none":
                 continue
             
@@ -805,17 +815,12 @@ async def bulk_delete_sales(request: BulkDeleteRequest):
 @api_router.post("/import/components")
 async def import_component_recipes(file: UploadFile = File(...)):
     """
-    Import component recipes from Excel.
+    Import component recipes from CSV or Excel.
     Expected columns: component_name, batch_yield_grams, ingredient_name, quantity, unit, prep_time_minutes, notes
     """
-    if not file.filename.endswith(('.xlsx', '.xls')):
-        raise HTTPException(status_code=400, detail="Please upload an Excel file (.xlsx)")
-    
     content = await file.read()
-    wb = openpyxl.load_workbook(BytesIO(content))
-    ws = wb.active
+    headers, data_rows = parse_uploaded_file(content, file.filename)
     
-    headers = [cell.value.lower().strip() if cell.value else "" for cell in ws[1]]
     required = ["component_name", "ingredient_name", "quantity", "unit"]
     missing = [r for r in required if r not in headers]
     if missing:
@@ -830,12 +835,12 @@ async def import_component_recipes(file: UploadFile = File(...)):
     
     errors = []
     
-    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+    for row_idx, row in enumerate(data_rows, start=2):
         try:
-            row_dict = {headers[i]: row[i] for i in range(len(headers)) if i < len(row)}
+            row_dict = {headers[i]: row[i] if i < len(row) else None for i in range(len(headers))}
             
-            component_name = str(row_dict.get("component_name", "")).strip()
-            ingredient_name = str(row_dict.get("ingredient_name", "")).strip()
+            component_name = str(row_dict.get("component_name", "") or "").strip()
+            ingredient_name = str(row_dict.get("ingredient_name", "") or "").strip()
             
             if not component_name or component_name.lower() == "none":
                 continue
@@ -855,7 +860,7 @@ async def import_component_recipes(file: UploadFile = File(...)):
                 ingredient_id = ingredients_lookup.get(ingredient_key, {}).get("id", "")
                 
                 if not ingredient_id:
-                    new_ing = Ingredient(name=ingredient_name, default_unit=str(row_dict.get("unit", "g")))
+                    new_ing = Ingredient(name=ingredient_name, default_unit=str(row_dict.get("unit", "g") or "g"))
                     await db.ingredients.insert_one(new_ing.model_dump())
                     ingredients_lookup[ingredient_key] = new_ing.model_dump()
                     ingredient_id = new_ing.id
@@ -864,7 +869,7 @@ async def import_component_recipes(file: UploadFile = File(...)):
                     ingredient_id=ingredient_id,
                     ingredient_name=ingredient_name,
                     quantity=float(row_dict.get("quantity", 0) or 0),
-                    unit=str(row_dict.get("unit", "g"))
+                    unit=str(row_dict.get("unit", "g") or "g")
                 )
                 component.ingredients.append(line_item)
                 
