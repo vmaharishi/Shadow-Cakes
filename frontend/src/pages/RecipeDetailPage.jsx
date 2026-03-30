@@ -111,11 +111,12 @@ export default function RecipeDetailPage() {
     }
   };
 
-  const fetchCostBreakdown = useCallback(async () => {
+  const fetchCostBreakdown = useCallback(async (priceOverride) => {
     if (!selectedVariantId) return;
     setCostLoading(true);
     try {
-      const price = sellingPrice ? `?selling_price=${sellingPrice}` : "";
+      const sp = priceOverride !== undefined ? priceOverride : sellingPrice;
+      const price = sp ? `?selling_price=${sp}` : "";
       const res = await axios.get(`${API}/recipes/${recipeId}/variants/${selectedVariantId}/cost${price}`);
       setCostBreakdown(res.data);
     } catch (error) {
@@ -123,7 +124,7 @@ export default function RecipeDetailPage() {
     } finally {
       setCostLoading(false);
     }
-  }, [recipeId, selectedVariantId, sellingPrice]);
+  }, [recipeId, selectedVariantId]);
 
   useEffect(() => {
     fetchRecipe();
@@ -883,7 +884,6 @@ export default function RecipeDetailPage() {
                         <span>{item.ingredient_name}</span>
                         <span className="text-xs text-[#5C554D]">
                           {item.store_vendor}{item.brand ? ` - ${item.brand}` : ''}
-                          {item.is_override && <span className="badge-override ml-1 text-[10px]">Override</span>}
                         </span>
                       </div>
                       <span className="font-mono">${item.cost.toFixed(2)}</span>
@@ -924,6 +924,8 @@ export default function RecipeDetailPage() {
                         type="number"
                         value={sellingPrice}
                         onChange={(e) => setSellingPrice(e.target.value)}
+                        onBlur={() => fetchCostBreakdown()}
+                        onKeyDown={(e) => { if (e.key === 'Enter') fetchCostBreakdown(); }}
                         placeholder="0.00"
                         className="form-input font-mono"
                         data-testid="selling-price-input"
