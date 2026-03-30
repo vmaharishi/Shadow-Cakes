@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { 
@@ -52,6 +52,7 @@ export default function RecipeDetailPage() {
   const [selectedVariantId, setSelectedVariantId] = useState(null);
   const [costBreakdown, setCostBreakdown] = useState(null);
   const [sellingPrice, setSellingPrice] = useState("");
+  const sellingPriceRef = useRef("");
   const [costLoading, setCostLoading] = useState(false);
   
   const [ingredients, setIngredients] = useState([]);
@@ -111,11 +112,11 @@ export default function RecipeDetailPage() {
     }
   };
 
-  const fetchCostBreakdown = useCallback(async (priceOverride) => {
+  const fetchCostBreakdown = useCallback(async () => {
     if (!selectedVariantId) return;
     setCostLoading(true);
     try {
-      const sp = priceOverride !== undefined ? priceOverride : sellingPrice;
+      const sp = sellingPriceRef.current;
       const price = sp ? `?selling_price=${sp}` : "";
       const res = await axios.get(`${API}/recipes/${recipeId}/variants/${selectedVariantId}/cost${price}`);
       setCostBreakdown(res.data);
@@ -923,7 +924,7 @@ export default function RecipeDetailPage() {
                       <Input
                         type="number"
                         value={sellingPrice}
-                        onChange={(e) => setSellingPrice(e.target.value)}
+                        onChange={(e) => { setSellingPrice(e.target.value); sellingPriceRef.current = e.target.value; }}
                         onBlur={() => fetchCostBreakdown()}
                         onKeyDown={(e) => { if (e.key === 'Enter') fetchCostBreakdown(); }}
                         placeholder="0.00"
