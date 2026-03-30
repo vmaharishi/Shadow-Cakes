@@ -82,8 +82,7 @@ export default function SettingsPage() {
           {/* Currency */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="form-label flex items-center gap-2">
-                <CurrencyDollar className="w-4 h-4" />
+              <label className="form-label">
                 Currency
               </label>
               <Input
@@ -106,8 +105,7 @@ export default function SettingsPage() {
           
           {/* Labour Rate */}
           <div>
-            <label className="form-label flex items-center gap-2">
-              <Fire className="w-4 h-4 text-[#C57B57]" />
+            <label className="form-label">
               Labour Rate per Hour
             </label>
             <div className="flex items-center gap-2">
@@ -129,8 +127,7 @@ export default function SettingsPage() {
           
           {/* Utility Rate */}
           <div>
-            <label className="form-label flex items-center gap-2">
-              <Lightning className="w-4 h-4 text-[#D99441]" />
+            <label className="form-label">
               Utility Rate per Hour
             </label>
             <div className="flex items-center gap-2">
