@@ -1,6 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { 
-  House, 
   Cake, 
   Carrot, 
   Package, 
@@ -11,12 +10,11 @@ import {
 } from "@phosphor-icons/react";
 
 const navItems = [
-  { path: "/", label: "Dashboard", icon: House },
+  { path: "/", label: "Sales Dashboard", icon: Receipt },
   { path: "/recipes", label: "Recipes", icon: Cake },
   { path: "/ingredients", label: "Ingredients", icon: Carrot },
   { path: "/packaging", label: "Packaging", icon: Package },
   { path: "/components", label: "Components", icon: Flask },
-  { path: "/sales", label: "Sales", icon: Receipt },
   { path: "/import", label: "Import", icon: Upload },
   { path: "/settings", label: "Settings", icon: Gear },
 ];

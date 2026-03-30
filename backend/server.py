@@ -820,6 +820,15 @@ async def delete_sale(sale_id: str):
         raise HTTPException(status_code=404, detail="Sale not found")
     return {"status": "deleted"}
 
+@api_router.put("/sales/{sale_id}")
+async def update_sale(sale_id: str, sale: Sale):
+    update_data = sale.model_dump()
+    update_data.pop("id", None)
+    result = await db.sales.update_one({"id": sale_id}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Sale not found")
+    return {"status": "updated"}
+
 @api_router.post("/sales/bulk-delete")
 async def bulk_delete_sales(request: BulkDeleteRequest):
     """Delete multiple sales"""
