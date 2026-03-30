@@ -9,7 +9,8 @@ import {
   CheckSquare,
   Square,
   X,
-  Export
+  Export,
+  PencilSimple
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +55,11 @@ export default function IngredientsPage() {
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+
+  // Edit state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingIngredient, setEditingIngredient] = useState(null);
+  const [editingPrice, setEditingPrice] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -207,6 +213,63 @@ export default function IngredientsPage() {
     } catch (error) {
       console.error("Error adding price:", error);
       toast.error("Failed to add price");
+    }
+  };
+
+  const handleEditIngredient = (ingredient) => {
+    const latestPrice = getLatestPrice(ingredient.id);
+    setEditingIngredient({ ...ingredient });
+    setEditingPrice(latestPrice ? { ...latestPrice } : {
+      id: null,
+      ingredient_id: ingredient.id,
+      ingredient_name: ingredient.name,
+      store_vendor: "",
+      purchase_price: "",
+      package_size: "",
+      unit: ingredient.default_unit,
+      purchase_date: new Date().toISOString().split('T')[0],
+      notes: ""
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingIngredient || !editingIngredient.name.trim()) {
+      toast.error("Ingredient name is required");
+      return;
+    }
+    try {
+      // Update ingredient name/unit
+      await axios.put(`${API}/ingredients/${editingIngredient.id}`, {
+        name: editingIngredient.name,
+        default_unit: editingIngredient.default_unit,
+        notes: editingIngredient.notes
+      });
+      // Update or create price if pricing fields are filled
+      if (editingPrice && editingPrice.store_vendor && editingPrice.purchase_price) {
+        const priceData = {
+          ingredient_id: editingIngredient.id,
+          ingredient_name: editingIngredient.name,
+          store_vendor: editingPrice.store_vendor,
+          purchase_price: parseFloat(editingPrice.purchase_price),
+          package_size: parseFloat(editingPrice.package_size) || 1,
+          unit: editingPrice.unit || editingIngredient.default_unit,
+          purchase_date: editingPrice.purchase_date || "",
+          is_latest: true,
+          notes: editingPrice.notes || ""
+        };
+        if (editingPrice.id) {
+          await axios.put(`${API}/ingredient-prices/${editingPrice.id}`, priceData);
+        } else {
+          await axios.post(`${API}/ingredient-prices`, priceData);
+        }
+      }
+      toast.success("Ingredient updated");
+      setEditDialogOpen(false);
+      fetchData();
+    } catch (error) {
+      console.error("Error updating ingredient:", error);
+      toast.error("Failed to update ingredient");
     }
   };
 
@@ -477,11 +540,11 @@ export default function IngredientsPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => { setSelectedIngredient(ingredient); setPriceDialogOpen(true); }}
+                              onClick={() => handleEditIngredient(ingredient)}
                               className="h-8 w-8 p-0 hover:bg-[#F4F1EA]"
-                              data-testid={`add-price-${ingredient.id}`}
+                              data-testid={`edit-ingredient-${ingredient.id}`}
                             >
-                              <Plus className="w-4 h-4" />
+                              <PencilSimple className="w-4 h-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -570,11 +633,11 @@ export default function IngredientsPage() {
                 </div>
               </div>
               <div>
-                <label className="form-label">Notes</label>
+                <label className="form-label">Brand</label>
                 <Input
                   value={newPrice.notes}
                   onChange={(e) => setNewPrice({ ...newPrice, notes: e.target.value })}
-                  placeholder="Optional notes..."
+                  placeholder="Optional brand..."
                   className="form-input"
                   data-testid="price-notes-input"
                 />
@@ -587,6 +650,100 @@ export default function IngredientsPage() {
                 Add Price
               </Button>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Ingredient Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="bg-white border-[#E8E3D9]">
+            <DialogHeader>
+              <DialogTitle className="font-outfit">Edit Ingredient</DialogTitle>
+            </DialogHeader>
+            {editingIngredient && (
+              <div className="space-y-4 mt-4">
+                <div>
+                  <label className="form-label">Ingredient Name *</label>
+                  <Input
+                    value={editingIngredient.name}
+                    onChange={(e) => setEditingIngredient({ ...editingIngredient, name: e.target.value })}
+                    className="form-input"
+                    data-testid="edit-ingredient-name"
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Store/Vendor</label>
+                  <Input
+                    value={editingPrice?.store_vendor || ""}
+                    onChange={(e) => setEditingPrice({ ...editingPrice, store_vendor: e.target.value })}
+                    className="form-input"
+                    data-testid="edit-ingredient-vendor"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="form-label">Purchase Price ($)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={editingPrice?.purchase_price ?? ""}
+                      onChange={(e) => setEditingPrice({ ...editingPrice, purchase_price: e.target.value })}
+                      className="form-input"
+                      data-testid="edit-ingredient-price"
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Package Size</label>
+                    <Input
+                      type="number"
+                      value={editingPrice?.package_size ?? ""}
+                      onChange={(e) => setEditingPrice({ ...editingPrice, package_size: e.target.value })}
+                      className="form-input"
+                      data-testid="edit-ingredient-size"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="form-label">Unit</label>
+                    <Input
+                      value={editingPrice?.unit || editingIngredient.default_unit}
+                      onChange={(e) => {
+                        setEditingPrice({ ...editingPrice, unit: e.target.value });
+                        setEditingIngredient({ ...editingIngredient, default_unit: e.target.value });
+                      }}
+                      className="form-input"
+                      data-testid="edit-ingredient-unit"
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Purchase Date</label>
+                    <Input
+                      type="date"
+                      value={editingPrice?.purchase_date?.split('T')[0] || ""}
+                      onChange={(e) => setEditingPrice({ ...editingPrice, purchase_date: e.target.value })}
+                      className="form-input"
+                      data-testid="edit-ingredient-date"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="form-label">Brand</label>
+                  <Input
+                    value={editingPrice?.notes || ""}
+                    onChange={(e) => setEditingPrice({ ...editingPrice, notes: e.target.value })}
+                    className="form-input"
+                    data-testid="edit-ingredient-brand"
+                  />
+                </div>
+                <Button 
+                  onClick={handleSaveEdit}
+                  className="w-full bg-[#2C1E16] hover:bg-[#3E2A1F] text-white"
+                  data-testid="confirm-edit-ingredient"
+                >
+                  Save Changes
+                </Button>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>

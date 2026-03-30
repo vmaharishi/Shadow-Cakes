@@ -79,8 +79,12 @@ class IngredientPrice(BaseModel):
 
 class PackagingBase(BaseModel):
     name: str
-    unit_cost: float
+    store_vendor: str = ""
+    purchase_price: float = 0
+    package_size: float = 1
+    unit_cost: float = 0
     unit: str = "piece"
+    purchase_date: str = ""
     notes: Optional[str] = None
 
 class Packaging(PackagingBase):
@@ -340,6 +344,18 @@ async def delete_ingredient_price(price_id: str):
         raise HTTPException(status_code=404, detail="Price not found")
     return {"status": "deleted"}
 
+@api_router.put("/ingredient-prices/{price_id}")
+async def update_ingredient_price(price_id: str, price: IngredientPrice):
+    existing = await db.ingredient_prices.find_one({"id": price_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Price not found")
+    update_data = price.model_dump()
+    update_data["id"] = price_id
+    if update_data["package_size"] > 0:
+        update_data["unit_cost"] = update_data["purchase_price"] / update_data["package_size"]
+    await db.ingredient_prices.replace_one({"id": price_id}, update_data)
+    return {**update_data}
+
 # ---------- PACKAGING ----------
 @api_router.get("/packaging", response_model=List[Packaging])
 async def get_packaging():
@@ -348,7 +364,10 @@ async def get_packaging():
 
 @api_router.post("/packaging", response_model=Packaging)
 async def create_packaging(packaging: PackagingBase):
-    new_packaging = Packaging(**packaging.model_dump())
+    data = packaging.model_dump()
+    if data["package_size"] > 0 and data["purchase_price"] > 0 and data["unit_cost"] == 0:
+        data["unit_cost"] = data["purchase_price"] / data["package_size"]
+    new_packaging = Packaging(**data)
     await db.packaging.insert_one(new_packaging.model_dump())
     return new_packaging
 
@@ -357,7 +376,10 @@ async def update_packaging(packaging_id: str, packaging: PackagingBase):
     existing = await db.packaging.find_one({"id": packaging_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Packaging not found")
-    updated = {**existing, **packaging.model_dump()}
+    data = packaging.model_dump()
+    if data["package_size"] > 0 and data["purchase_price"] > 0:
+        data["unit_cost"] = data["purchase_price"] / data["package_size"]
+    updated = {**existing, **data}
     await db.packaging.replace_one({"id": packaging_id}, updated)
     return Packaging(**updated)
 

@@ -39,7 +39,9 @@ export default function PackagingPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedPackaging, setSelectedPackaging] = useState(null);
-  const [newPackaging, setNewPackaging] = useState({ name: "", unit_cost: "", unit: "piece", notes: "" });
+  const [newPackaging, setNewPackaging] = useState({ 
+    name: "", store_vendor: "", purchase_price: "", package_size: "", unit: "piece", purchase_date: new Date().toISOString().split('T')[0], notes: "" 
+  });
   
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -62,21 +64,27 @@ export default function PackagingPage() {
   }, []);
 
   const handleCreatePackaging = async () => {
-    if (!newPackaging.name.trim() || !newPackaging.unit_cost) {
-      toast.error("Name and unit cost are required");
+    if (!newPackaging.name.trim() || !newPackaging.purchase_price) {
+      toast.error("Name and purchase price are required");
       return;
     }
     
     try {
+      const pkgSize = parseFloat(newPackaging.package_size) || 1;
+      const purchasePrice = parseFloat(newPackaging.purchase_price);
       await axios.post(`${API}/packaging`, {
         name: newPackaging.name,
-        unit_cost: parseFloat(newPackaging.unit_cost),
+        store_vendor: newPackaging.store_vendor,
+        purchase_price: purchasePrice,
+        package_size: pkgSize,
+        unit_cost: pkgSize > 0 ? purchasePrice / pkgSize : 0,
         unit: newPackaging.unit,
+        purchase_date: newPackaging.purchase_date,
         notes: newPackaging.notes
       });
       toast.success("Packaging item created");
       setDialogOpen(false);
-      setNewPackaging({ name: "", unit_cost: "", unit: "piece", notes: "" });
+      setNewPackaging({ name: "", store_vendor: "", purchase_price: "", package_size: "", unit: "piece", purchase_date: new Date().toISOString().split('T')[0], notes: "" });
       fetchPackaging();
     } catch (error) {
       console.error("Error creating packaging:", error);
@@ -85,16 +93,22 @@ export default function PackagingPage() {
   };
 
   const handleUpdatePackaging = async () => {
-    if (!selectedPackaging.name.trim() || !selectedPackaging.unit_cost) {
-      toast.error("Name and unit cost are required");
+    if (!selectedPackaging.name.trim() || !selectedPackaging.purchase_price) {
+      toast.error("Name and purchase price are required");
       return;
     }
     
     try {
+      const pkgSize = parseFloat(selectedPackaging.package_size) || 1;
+      const purchasePrice = parseFloat(selectedPackaging.purchase_price);
       await axios.put(`${API}/packaging/${selectedPackaging.id}`, {
         name: selectedPackaging.name,
-        unit_cost: parseFloat(selectedPackaging.unit_cost),
+        store_vendor: selectedPackaging.store_vendor || "",
+        purchase_price: purchasePrice,
+        package_size: pkgSize,
+        unit_cost: pkgSize > 0 ? purchasePrice / pkgSize : 0,
         unit: selectedPackaging.unit,
+        purchase_date: selectedPackaging.purchase_date || "",
         notes: selectedPackaging.notes
       });
       toast.success("Packaging updated");
@@ -264,7 +278,7 @@ export default function PackagingPage() {
                   </DialogHeader>
                   <div className="space-y-4 mt-4">
                     <div>
-                      <label className="form-label">Name *</label>
+                      <label className="form-label">Packaging Name *</label>
                       <Input
                         value={newPackaging.name}
                         onChange={(e) => setNewPackaging({ ...newPackaging, name: e.target.value })}
@@ -273,19 +287,42 @@ export default function PackagingPage() {
                         data-testid="packaging-name-input"
                       />
                     </div>
+                    <div>
+                      <label className="form-label">Store/Vendor</label>
+                      <Input
+                        value={newPackaging.store_vendor}
+                        onChange={(e) => setNewPackaging({ ...newPackaging, store_vendor: e.target.value })}
+                        placeholder="e.g., Amazon, Costco"
+                        className="form-input"
+                        data-testid="packaging-vendor-input"
+                      />
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="form-label">Unit Cost ($) *</label>
+                        <label className="form-label">Purchase Price ($) *</label>
                         <Input
                           type="number"
                           step="0.01"
-                          value={newPackaging.unit_cost}
-                          onChange={(e) => setNewPackaging({ ...newPackaging, unit_cost: e.target.value })}
-                          placeholder="2.50"
+                          value={newPackaging.purchase_price}
+                          onChange={(e) => setNewPackaging({ ...newPackaging, purchase_price: e.target.value })}
+                          placeholder="12.99"
                           className="form-input"
-                          data-testid="packaging-cost-input"
+                          data-testid="packaging-price-input"
                         />
                       </div>
+                      <div>
+                        <label className="form-label">Package Size</label>
+                        <Input
+                          type="number"
+                          value={newPackaging.package_size}
+                          onChange={(e) => setNewPackaging({ ...newPackaging, package_size: e.target.value })}
+                          placeholder="10"
+                          className="form-input"
+                          data-testid="packaging-size-input"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="form-label">Unit</label>
                         <Input
@@ -294,6 +331,16 @@ export default function PackagingPage() {
                           placeholder="piece"
                           className="form-input"
                           data-testid="packaging-unit-input"
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label">Purchase Date</label>
+                        <Input
+                          type="date"
+                          value={newPackaging.purchase_date}
+                          onChange={(e) => setNewPackaging({ ...newPackaging, purchase_date: e.target.value })}
+                          className="form-input"
+                          data-testid="packaging-date-input"
                         />
                       </div>
                     </div>
@@ -442,7 +489,7 @@ export default function PackagingPage() {
             {selectedPackaging && (
               <div className="space-y-4 mt-4">
                 <div>
-                  <label className="form-label">Name *</label>
+                  <label className="form-label">Packaging Name *</label>
                   <Input
                     value={selectedPackaging.name}
                     onChange={(e) => setSelectedPackaging({ ...selectedPackaging, name: e.target.value })}
@@ -450,18 +497,39 @@ export default function PackagingPage() {
                     data-testid="edit-packaging-name"
                   />
                 </div>
+                <div>
+                  <label className="form-label">Store/Vendor</label>
+                  <Input
+                    value={selectedPackaging.store_vendor || ""}
+                    onChange={(e) => setSelectedPackaging({ ...selectedPackaging, store_vendor: e.target.value })}
+                    className="form-input"
+                    data-testid="edit-packaging-vendor"
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="form-label">Unit Cost ($) *</label>
+                    <label className="form-label">Purchase Price ($) *</label>
                     <Input
                       type="number"
                       step="0.01"
-                      value={selectedPackaging.unit_cost}
-                      onChange={(e) => setSelectedPackaging({ ...selectedPackaging, unit_cost: e.target.value })}
+                      value={selectedPackaging.purchase_price ?? selectedPackaging.unit_cost ?? ""}
+                      onChange={(e) => setSelectedPackaging({ ...selectedPackaging, purchase_price: e.target.value })}
                       className="form-input"
-                      data-testid="edit-packaging-cost"
+                      data-testid="edit-packaging-price"
                     />
                   </div>
+                  <div>
+                    <label className="form-label">Package Size</label>
+                    <Input
+                      type="number"
+                      value={selectedPackaging.package_size ?? 1}
+                      onChange={(e) => setSelectedPackaging({ ...selectedPackaging, package_size: e.target.value })}
+                      className="form-input"
+                      data-testid="edit-packaging-size"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="form-label">Unit</label>
                     <Input
@@ -469,6 +537,16 @@ export default function PackagingPage() {
                       onChange={(e) => setSelectedPackaging({ ...selectedPackaging, unit: e.target.value })}
                       className="form-input"
                       data-testid="edit-packaging-unit"
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Purchase Date</label>
+                    <Input
+                      type="date"
+                      value={selectedPackaging.purchase_date || ""}
+                      onChange={(e) => setSelectedPackaging({ ...selectedPackaging, purchase_date: e.target.value })}
+                      className="form-input"
+                      data-testid="edit-packaging-date"
                     />
                   </div>
                 </div>
