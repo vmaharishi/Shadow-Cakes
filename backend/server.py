@@ -754,10 +754,20 @@ async def import_packaging(file: UploadFile = File(...)):
             package_size = float(row_dict.get("package_size", 1) or 1)
             unit_cost = purchase_price / package_size if package_size > 0 else purchase_price
             
+            purchase_date = row_dict.get("purchase_date", "")
+            if isinstance(purchase_date, datetime):
+                purchase_date = purchase_date.isoformat()
+            else:
+                purchase_date = str(purchase_date) if purchase_date else ""
+            
             packaging = Packaging(
                 name=name,
+                store_vendor=str(row_dict.get("store_vendor", "") or ""),
+                purchase_price=purchase_price,
+                package_size=package_size,
                 unit_cost=unit_cost,
                 unit=str(row_dict.get("unit", "piece") or "piece"),
+                purchase_date=purchase_date,
                 notes=str(row_dict.get("notes", "") or "")
             )
             await db.packaging.insert_one(packaging.model_dump())

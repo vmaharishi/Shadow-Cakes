@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { 
   Cake, 
@@ -6,8 +7,12 @@ import {
   Flask, 
   Upload, 
   Gear,
-  Receipt
+  Receipt,
+  WifiSlash,
+  ArrowsClockwise,
+  DownloadSimple
 } from "@phosphor-icons/react";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 
 const navItems = [
   { path: "/", label: "Sales Dashboard", icon: Receipt },
@@ -20,14 +25,52 @@ const navItems = [
 ];
 
 export default function Layout() {
+  const { isOnline, pendingCount } = useOnlineStatus();
+  const [installPrompt, setInstallPrompt] = useState(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const result = await installPrompt.userChoice;
+    if (result.outcome === "accepted") {
+      setInstallPrompt(null);
+    }
+  };
+
   return (
     <div className="app-container flex" data-testid="app-layout">
+      {/* Offline Banner */}
+      {!isOnline && (
+        <div 
+          className="fixed top-0 left-0 right-0 z-50 bg-[#D99441] text-white text-center py-2 text-sm font-medium flex items-center justify-center gap-2"
+          data-testid="offline-banner"
+        >
+          <WifiSlash className="w-4 h-4" />
+          You're offline — changes will sync when you reconnect
+          {pendingCount > 0 && (
+            <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">
+              <ArrowsClockwise className="w-3 h-3 inline mr-1" />
+              {pendingCount} pending
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Sidebar */}
-      <aside className="sidebar w-64 flex-shrink-0 fixed h-full" data-testid="sidebar">
-        <div className="p-6">
+      <aside className={`sidebar w-64 flex-shrink-0 fixed h-full ${!isOnline ? 'pt-10' : ''}`} data-testid="sidebar">
+        <div className="p-6 flex flex-col h-full">
           <div className="flex items-center gap-3 mb-8">
             <img 
-              src="https://customer-assets.emergentagent.com/job_recipe-costing-19/artifacts/bhoi6cdl_Shadow%20Logo-Cream.jpg" 
+              src="/icon-96x96.png" 
               alt="Shadow Cakes" 
               className="w-10 h-10 rounded-lg object-cover"
             />
@@ -39,7 +82,7 @@ export default function Layout() {
             </div>
           </div>
           
-          <nav className="space-y-1">
+          <nav className="space-y-1 flex-1">
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
@@ -55,11 +98,23 @@ export default function Layout() {
               </NavLink>
             ))}
           </nav>
+
+          {/* Install App Button */}
+          {installPrompt && (
+            <button
+              onClick={handleInstall}
+              className="mt-4 mb-2 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#2C1E16] text-white text-sm font-medium hover:bg-[#3E2A1F] transition-colors"
+              data-testid="install-pwa-btn"
+            >
+              <DownloadSimple className="w-4 h-4" />
+              Install App
+            </button>
+          )}
         </div>
       </aside>
       
       {/* Main content */}
-      <main className="flex-1 ml-64 min-h-screen">
+      <main className={`flex-1 ml-64 min-h-screen ${!isOnline ? 'pt-10' : ''}`}>
         <Outlet />
       </main>
     </div>

@@ -6,7 +6,7 @@ import json
 from datetime import datetime, timezone
 
 class ShadowCakesAPITester:
-    def __init__(self, base_url="https://recipe-costing-19.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://shadow-cakes-costing.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.tests_run = 0
         self.tests_passed = 0

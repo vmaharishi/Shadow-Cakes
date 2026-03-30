@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "@/index.css";
 import App from "@/App";
+import * as serviceWorkerRegistration from "@/serviceWorkerRegistration";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -9,3 +10,14 @@ root.render(
     <App />
   </React.StrictMode>,
 );
+
+// Register service worker for PWA + offline support
+serviceWorkerRegistration.register({
+  onSuccess: () => console.log("Shadow Cakes is ready for offline use."),
+  onUpdate: (registration) => {
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: "SKIP_WAITING" });
+      window.location.reload();
+    }
+  },
+});
