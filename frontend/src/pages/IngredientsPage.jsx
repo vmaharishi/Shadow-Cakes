@@ -128,7 +128,8 @@ export default function IngredientsPage() {
       return;
     }
     
-    const headers = ["Ingredient Name", "Default Unit", "Store/Vendor", "Brand", "Purchase Price", "Package Size", "Unit", "Unit Cost", "Notes"];
+    // Match import format: ingredient_name, store_vendor, purchase_price, package_size, unit, purchase_date, brand
+    const headers = ["ingredient_name", "store_vendor", "purchase_price", "package_size", "unit", "purchase_date", "brand"];
     const rows = [];
     
     ingredients.forEach(ing => {
@@ -137,27 +138,23 @@ export default function IngredientsPage() {
         ingPrices.forEach(price => {
           rows.push([
             ing.name,
-            ing.default_unit,
             price.store_vendor,
-            price.notes || "",
-            price.purchase_price.toFixed(2),
+            price.purchase_price,
             price.package_size,
             price.unit,
-            price.unit_cost.toFixed(4),
-            ing.notes || ""
+            price.purchase_date?.split('T')[0] || "",
+            price.notes || ""
           ]);
         });
       } else {
         rows.push([
           ing.name,
+          "",
+          "",
+          "",
           ing.default_unit,
           "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          ing.notes || ""
+          ""
         ]);
       }
     });

@@ -151,14 +151,35 @@ export default function ComponentsPage() {
       return;
     }
     
-    const headers = ["Component Name", "Batch Yield (g)", "Prep Time (min)", "Ingredients", "Notes"];
-    const rows = components.map(comp => [
-      comp.name,
-      comp.batch_yield_grams || 0,
-      comp.prep_time_minutes || 0,
-      comp.ingredients?.map(i => `${i.ingredient_name} (${i.quantity} ${i.unit})`).join("; ") || "",
-      (comp.notes || "").replace(/,/g, ";")
-    ]);
+    // Match import format: component_name, batch_yield_grams, ingredient_name, quantity, unit, prep_time_minutes, notes
+    const headers = ["component_name", "batch_yield_grams", "ingredient_name", "quantity", "unit", "prep_time_minutes", "notes"];
+    const rows = [];
+    
+    components.forEach(comp => {
+      if (comp.ingredients && comp.ingredients.length > 0) {
+        comp.ingredients.forEach((ing, idx) => {
+          rows.push([
+            comp.name,
+            idx === 0 ? (comp.batch_yield_grams || 0) : "",
+            ing.ingredient_name,
+            ing.quantity,
+            ing.unit,
+            idx === 0 ? (comp.prep_time_minutes || 0) : "",
+            idx === 0 ? (comp.notes || "") : ""
+          ]);
+        });
+      } else {
+        rows.push([
+          comp.name,
+          comp.batch_yield_grams || 0,
+          "",
+          "",
+          "",
+          comp.prep_time_minutes || 0,
+          comp.notes || ""
+        ]);
+      }
+    });
     
     const csvContent = [
       headers.join(","),

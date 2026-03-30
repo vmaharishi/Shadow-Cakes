@@ -142,12 +142,16 @@ export default function PackagingPage() {
       return;
     }
     
-    const headers = ["Name", "Unit Cost", "Unit", "Notes"];
+    // Match import format: packaging_name, store_vendor, purchase_price, package_size, unit, purchase_date, notes
+    const headers = ["packaging_name", "store_vendor", "purchase_price", "package_size", "unit", "purchase_date", "notes"];
     const rows = packaging.map(pkg => [
       pkg.name,
-      pkg.unit_cost.toFixed(2),
+      "",  // store_vendor - not stored separately, could be derived
+      pkg.unit_cost,  // purchase_price (same as unit_cost since package_size=1)
+      1,  // package_size
       pkg.unit,
-      (pkg.notes || "").replace(/,/g, ";")
+      "",  // purchase_date
+      pkg.notes || ""
     ]);
     
     const csvContent = [

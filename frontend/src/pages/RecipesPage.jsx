@@ -103,13 +103,52 @@ export default function RecipesPage() {
       return;
     }
     
-    const headers = ["Recipe Name", "Category", "Variants", "Notes"];
-    const rows = recipes.map(recipe => [
-      recipe.name,
-      recipe.category || "",
-      recipe.variants?.map(v => v.name).join("; ") || "",
-      (recipe.notes || "").replace(/,/g, ";")
-    ]);
+    // Match import format: recipe_name, variant_name, ingredient_name, quantity, unit, prep_time_minutes, category, notes
+    const headers = ["recipe_name", "variant_name", "ingredient_name", "quantity", "unit", "prep_time_minutes", "category", "notes"];
+    const rows = [];
+    
+    recipes.forEach(recipe => {
+      if (recipe.variants && recipe.variants.length > 0) {
+        recipe.variants.forEach(variant => {
+          if (variant.ingredients && variant.ingredients.length > 0) {
+            variant.ingredients.forEach((ing, idx) => {
+              rows.push([
+                recipe.name,
+                variant.name,
+                ing.ingredient_name,
+                ing.quantity,
+                ing.unit,
+                idx === 0 ? (variant.prep_time_minutes || 0) : "",
+                idx === 0 ? (recipe.category || "") : "",
+                idx === 0 ? (recipe.notes || "") : ""
+              ]);
+            });
+          } else {
+            rows.push([
+              recipe.name,
+              variant.name,
+              "",
+              "",
+              "",
+              variant.prep_time_minutes || 0,
+              recipe.category || "",
+              recipe.notes || ""
+            ]);
+          }
+        });
+      } else {
+        rows.push([
+          recipe.name,
+          "",
+          "",
+          "",
+          "",
+          "",
+          recipe.category || "",
+          recipe.notes || ""
+        ]);
+      }
+    });
     
     const csvContent = [
       headers.join(","),
