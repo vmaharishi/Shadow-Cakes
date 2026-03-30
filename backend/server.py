@@ -172,6 +172,7 @@ class Sale(BaseModel):
     notes: str = ""
     selling_price: float
     total_cost: float
+    labour_cost: float = 0.0
     profit: float
     profit_margin: float
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -785,6 +786,23 @@ async def bulk_delete_components(request: BulkDeleteRequest):
     return {"status": "success", "deleted_count": deleted_count}
 
 # ---------- SALES ----------
+@api_router.get("/sales/summary")
+async def get_sales_summary():
+    """Get aggregated sales summary for dashboard"""
+    docs = await db.sales.find({}, {"_id": 0}).to_list(5000)
+    total_sales = len(docs)
+    total_revenue = sum(d.get("selling_price", 0) for d in docs)
+    total_cost = sum(d.get("total_cost", 0) for d in docs)
+    total_labour = sum(d.get("labour_cost", 0) for d in docs)
+    total_profit = sum(d.get("profit", 0) for d in docs)
+    return {
+        "total_sales": total_sales,
+        "total_revenue": total_revenue,
+        "total_cost": total_cost,
+        "total_hourly_pay": total_labour,
+        "total_profit": total_profit
+    }
+
 @api_router.get("/sales", response_model=List[Sale])
 async def get_sales():
     docs = await db.sales.find({}, {"_id": 0}).sort("sale_date", -1).to_list(5000)

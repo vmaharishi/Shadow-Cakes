@@ -32,11 +32,16 @@ Shadow Cakes needs a simple, reliable recipe costing app for personal use that r
 - [x] Component recipes (reusable sub-recipes like frostings, ganaches)
 - [x] Settings for labour/utility rates
 - [x] Cost calculation engine with full breakdown
-- [x] Excel import for ingredients, recipes, packaging, components
+- [x] Excel/CSV import for ingredients, recipes, packaging, components
 - [x] Replace behavior for imports (not merge)
+- [x] Sales recording with labour_cost tracking
+- [x] Sales summary endpoint (GET /api/sales/summary)
+- [x] Bulk delete for ingredients, packaging, components, sales
+- [x] CSV export from all data tabs
 
 ### Frontend (React + Shadcn UI)
-- [x] Dashboard with stats cards and quick actions
+- [x] Dashboard with Sales Overview tracker (Total Sales, Revenue, Cost, Hourly Pay, Profit)
+- [x] Dashboard stat cards for Recipes, Ingredients, Packaging, Components
 - [x] Recipe library with search and CRUD
 - [x] Recipe detail page with cost breakdown panel
 - [x] Variant management (add, edit, delete variants)
@@ -44,9 +49,11 @@ Shadow Cakes needs a simple, reliable recipe costing app for personal use that r
 - [x] Packaging management
 - [x] Component recipes management
 - [x] Settings page for rates configuration
-- [x] Excel import page with drag & drop
+- [x] Import page with CSV/XLSX support and drag & drop
 - [x] Selling price input with margin calculation
 - [x] Vendor/store override per ingredient line
+- [x] Record a Sale popup from recipe detail
+- [x] Sales page with table, search, bulk delete, CSV export
 
 ### Design
 - [x] Light theme with warm, earthy colors (Organic & Earthy)

@@ -352,6 +352,7 @@ export default function RecipeDetailPage() {
         notes: newSale.notes,
         selling_price: costBreakdown.breakdown.selling_price,
         total_cost: costBreakdown.breakdown.total_cost,
+        labour_cost: costBreakdown.breakdown.labour_cost || 0,
         profit: profit,
         profit_margin: costBreakdown.breakdown.profit_margin
       };

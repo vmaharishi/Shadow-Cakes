@@ -87,7 +87,7 @@ export default function SalesPage() {
     }
     
     // Create CSV content
-    const headers = ["Sale Date", "Recipe", "Variant", "Customer", "Selling Price", "Total Cost", "Profit", "Profit Margin", "Notes"];
+    const headers = ["Sale Date", "Recipe", "Variant", "Customer", "Selling Price", "Total Cost", "Labour Cost", "Profit", "Profit Margin", "Notes"];
     const rows = filteredSales.map(sale => [
       sale.sale_date,
       sale.recipe_name,
@@ -95,6 +95,7 @@ export default function SalesPage() {
       sale.customer_name,
       sale.selling_price.toFixed(2),
       sale.total_cost.toFixed(2),
+      (sale.labour_cost || 0).toFixed(2),
       sale.profit.toFixed(2),
       `${sale.profit_margin.toFixed(1)}%`,
       sale.notes.replace(/,/g, ";")

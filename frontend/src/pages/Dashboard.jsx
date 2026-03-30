@@ -7,7 +7,11 @@ import {
   Package, 
   Flask,
   ArrowRight,
-  TrendUp
+  TrendUp,
+  Receipt,
+  CurrencyDollar,
+  Clock,
+  ChartLineUp
 } from "@phosphor-icons/react";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -19,16 +23,24 @@ export default function Dashboard() {
     packaging: 0,
     components: 0
   });
+  const [salesSummary, setSalesSummary] = useState({
+    total_sales: 0,
+    total_revenue: 0,
+    total_cost: 0,
+    total_hourly_pay: 0,
+    total_profit: 0
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [recipesRes, ingredientsRes, packagingRes, componentsRes] = await Promise.all([
+        const [recipesRes, ingredientsRes, packagingRes, componentsRes, salesRes] = await Promise.all([
           axios.get(`${API}/recipes`),
           axios.get(`${API}/ingredients`),
           axios.get(`${API}/packaging`),
-          axios.get(`${API}/component-recipes`)
+          axios.get(`${API}/component-recipes`),
+          axios.get(`${API}/sales/summary`)
         ]);
         
         setStats({
@@ -37,6 +49,7 @@ export default function Dashboard() {
           packaging: packagingRes.data.length,
           components: componentsRes.data.length
         });
+        setSalesSummary(salesRes.data);
       } catch (error) {
         console.error("Error fetching stats:", error);
       } finally {
@@ -46,6 +59,44 @@ export default function Dashboard() {
     
     fetchStats();
   }, []);
+
+  const salesCards = [
+    {
+      label: "Total Sales",
+      value: salesSummary.total_sales,
+      format: "count",
+      icon: Receipt,
+      color: "#2C1E16"
+    },
+    {
+      label: "Total Revenue",
+      value: salesSummary.total_revenue,
+      format: "currency",
+      icon: CurrencyDollar,
+      color: "#4A6B53"
+    },
+    {
+      label: "Total Cost",
+      value: salesSummary.total_cost,
+      format: "currency",
+      icon: ChartLineUp,
+      color: "#C57B57"
+    },
+    {
+      label: "Total Hourly Pay",
+      value: salesSummary.total_hourly_pay,
+      format: "currency",
+      icon: Clock,
+      color: "#D99441"
+    },
+    {
+      label: "Total Profit",
+      value: salesSummary.total_profit,
+      format: "currency",
+      icon: TrendUp,
+      color: salesSummary.total_profit >= 0 ? "#4A6B53" : "#A63C3C"
+    }
+  ];
 
   const statCards = [
     { 
@@ -85,6 +136,43 @@ export default function Dashboard() {
       </header>
       
       <div className="p-8">
+        {/* Sales Tracker */}
+        <div className="mb-8 animate-fade-in-up">
+          <h2 className="font-outfit font-medium text-sm uppercase tracking-wider text-[#5C554D] mb-4">
+            Sales Overview
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {salesCards.map((card, index) => (
+              <Link
+                key={card.label}
+                to="/sales"
+                className={`card-flat p-5 hover:shadow-sm transition-shadow stagger-${index + 1}`}
+                data-testid={`sales-card-${card.label.toLowerCase().replace(/\s+/g, '-')}`}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: `${card.color}10` }}
+                  >
+                    <card.icon
+                      className="w-4 h-4"
+                      weight="duotone"
+                      style={{ color: card.color }}
+                    />
+                  </div>
+                </div>
+                <p className="text-2xl font-outfit font-semibold text-[#1A1A1A] font-mono">
+                  {loading ? "..." : card.format === "currency"
+                    ? `$${card.value.toFixed(2)}`
+                    : card.value
+                  }
+                </p>
+                <p className="text-xs text-[#5C554D] mt-1">{card.label}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {statCards.map((card, index) => (
@@ -115,36 +203,6 @@ export default function Dashboard() {
               </div>
             </Link>
           ))}
-        </div>
-        
-        {/* Quick Actions */}
-        <div className="card-flat p-6 mb-8 animate-fade-in-up stagger-5">
-          <h2 className="font-outfit font-medium text-lg text-[#1A1A1A] mb-4">
-            Quick Actions
-          </h2>
-          <div className="flex flex-wrap gap-3">
-            <Link 
-              to="/import"
-              className="btn-primary inline-flex items-center gap-2"
-              data-testid="quick-action-import"
-            >
-              Import Data
-            </Link>
-            <Link 
-              to="/recipes"
-              className="btn-secondary inline-flex items-center gap-2"
-              data-testid="quick-action-recipes"
-            >
-              View Recipes
-            </Link>
-            <Link 
-              to="/settings"
-              className="btn-secondary inline-flex items-center gap-2"
-              data-testid="quick-action-settings"
-            >
-              Configure Rates
-            </Link>
-          </div>
         </div>
         
         {/* Getting Started */}
