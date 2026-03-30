@@ -216,10 +216,9 @@ export default function IngredientsPage() {
     }
   };
 
-  const handleEditIngredient = (ingredient) => {
-    const latestPrice = getLatestPrice(ingredient.id);
+  const handleEditIngredient = (ingredient, price) => {
     setEditingIngredient({ ...ingredient });
-    setEditingPrice(latestPrice ? { ...latestPrice } : {
+    setEditingPrice(price ? { ...price } : {
       id: null,
       ingredient_id: ingredient.id,
       ingredient_name: ingredient.name,
@@ -309,6 +308,19 @@ export default function IngredientsPage() {
   const filteredIngredients = ingredients.filter(ing =>
     ing.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Flatten: one row per price record (or one row for ingredient with no prices)
+  const flatRows = [];
+  filteredIngredients.forEach(ing => {
+    const ingPrices = getIngredientPrices(ing.id);
+    if (ingPrices.length > 0) {
+      ingPrices.forEach(price => {
+        flatRows.push({ ingredient: ing, price, key: price.id });
+      });
+    } else {
+      flatRows.push({ ingredient: ing, price: null, key: ing.id });
+    }
+  });
 
   return (
     <div data-testid="ingredients-page">
@@ -462,9 +474,11 @@ export default function IngredientsPage() {
                     </TableHead>
                   )}
                   <TableHead className="table-header-cell">Ingredient</TableHead>
-                  <TableHead className="table-header-cell">Unit</TableHead>
-                  <TableHead className="table-header-cell">Latest Price</TableHead>
                   <TableHead className="table-header-cell">Store/Vendor</TableHead>
+                  <TableHead className="table-header-cell">Brand</TableHead>
+                  <TableHead className="table-header-cell text-right">Purchase Price</TableHead>
+                  <TableHead className="table-header-cell text-right">Package Size</TableHead>
+                  <TableHead className="table-header-cell">Unit</TableHead>
                   <TableHead className="table-header-cell text-right">Unit Cost</TableHead>
                   {!isSelectionMode && (
                     <TableHead className="table-header-cell w-24">Actions</TableHead>
@@ -472,15 +486,13 @@ export default function IngredientsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredIngredients.map((ingredient) => {
-                  const latestPrice = getLatestPrice(ingredient.id);
-                  const priceCount = getIngredientPrices(ingredient.id).length;
-                  
+                {flatRows.map((row) => {
+                  const { ingredient, price, key } = row;
                   return (
                     <TableRow 
-                      key={ingredient.id} 
+                      key={key} 
                       className={`table-row ${selectedIds.has(ingredient.id) ? 'bg-[#C57B57]/5' : ''}`}
-                      data-testid={`ingredient-row-${ingredient.id}`}
+                      data-testid={`ingredient-row-${key}`}
                     >
                       {isSelectionMode && (
                         <TableCell className="table-cell">
@@ -496,43 +508,31 @@ export default function IngredientsPage() {
                           <div className="w-8 h-8 rounded bg-[#C57B57]/10 flex items-center justify-center">
                             <Carrot className="w-4 h-4 text-[#C57B57]" />
                           </div>
-                          <div>
-                            <p>{ingredient.name}</p>
-                            {ingredient.notes && (
-                              <p className="text-xs text-[#5C554D]">{ingredient.notes}</p>
-                            )}
-                          </div>
+                          <span>{ingredient.name}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="table-cell">{ingredient.default_unit}</TableCell>
                       <TableCell className="table-cell">
-                        {latestPrice ? (
-                          <span className="font-mono">${latestPrice.purchase_price.toFixed(2)}</span>
-                        ) : (
-                          <span className="text-[#D99441]">No pricing</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="table-cell">
-                        {latestPrice ? (
+                        {price ? (
                           <div className="flex items-center gap-2">
                             <Storefront className="w-4 h-4 text-[#5C554D]" />
-                            <span>{latestPrice.store_vendor}</span>
-                            {priceCount > 1 && (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-[#F4F1EA] text-[#5C554D]">
-                                +{priceCount - 1} more
-                              </span>
-                            )}
+                            <span>{price.store_vendor}</span>
                           </div>
-                        ) : (
-                          "-"
-                        )}
+                        ) : "-"}
                       </TableCell>
-                      <TableCell className="table-cell-numeric">
-                        {latestPrice ? (
-                          <span className="font-mono">${latestPrice.unit_cost.toFixed(4)}/{latestPrice.unit}</span>
-                        ) : (
-                          "-"
-                        )}
+                      <TableCell className="table-cell text-[#5C554D]">
+                        {price?.notes || "-"}
+                      </TableCell>
+                      <TableCell className="table-cell-numeric font-mono">
+                        {price ? `$${price.purchase_price.toFixed(2)}` : "-"}
+                      </TableCell>
+                      <TableCell className="table-cell-numeric font-mono">
+                        {price ? price.package_size : "-"}
+                      </TableCell>
+                      <TableCell className="table-cell">
+                        {price ? price.unit : ingredient.default_unit}
+                      </TableCell>
+                      <TableCell className="table-cell-numeric font-mono">
+                        {price ? `$${price.unit_cost.toFixed(4)}/${price.unit}` : "-"}
                       </TableCell>
                       {!isSelectionMode && (
                         <TableCell className="table-cell">
@@ -540,9 +540,9 @@ export default function IngredientsPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleEditIngredient(ingredient)}
+                              onClick={() => handleEditIngredient(ingredient, price)}
                               className="h-8 w-8 p-0 hover:bg-[#F4F1EA]"
-                              data-testid={`edit-ingredient-${ingredient.id}`}
+                              data-testid={`edit-ingredient-${key}`}
                             >
                               <PencilSimple className="w-4 h-4" />
                             </Button>
