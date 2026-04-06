@@ -67,7 +67,7 @@ export default function RecipeDetailPage() {
   
   const [newIngredient, setNewIngredient] = useState({ ingredient_id: "", quantity: "", unit: "g" });
   const [newPackaging, setNewPackaging] = useState({ packaging_id: "", quantity: 1 });
-  const [newComponent, setNewComponent] = useState({ component_recipe_id: "" });
+  const [newComponent, setNewComponent] = useState({ selection: "" });
   const [newVariant, setNewVariant] = useState({ name: "", prep_time_minutes: 0, utility_time_minutes: 0 });
   const [editingPrepTime, setEditingPrepTime] = useState(false);
   const [tempPrepTime, setTempPrepTime] = useState(0);
@@ -255,20 +255,24 @@ export default function RecipeDetailPage() {
   };
 
   const handleAddComponent = async () => {
-    if (!newComponent.component_recipe_id) {
+    if (!newComponent.selection) {
       toast.error("Please select a component");
       return;
     }
     
-    const comp = components.find(c => c.id === newComponent.component_recipe_id);
+    // selection format: "componentId|variantId"
+    const [compId, varId] = newComponent.selection.split("|");
+    const comp = components.find(c => c.id === compId);
+    const variant = comp?.variants?.find(v => v.id === varId);
+    
     const updatedVariants = recipe.variants.map(v => {
       if (v.id === selectedVariantId) {
         return {
           ...v,
           components: [...v.components, {
             id: crypto.randomUUID(),
-            component_recipe_id: newComponent.component_recipe_id,
-            component_name: comp?.name || "",
+            component_recipe_id: compId,
+            component_name: `${comp?.name || ""} — ${variant?.name || ""}`,
             quantity: 1,
             use_gram_costing: false
           }]
@@ -278,7 +282,7 @@ export default function RecipeDetailPage() {
     });
     
     await handleSaveRecipe({ ...recipe, variants: updatedVariants });
-    setNewComponent({ component_recipe_id: "" });
+    setNewComponent({ selection: "" });
     setAddComponentOpen(false);
   };
 
@@ -837,14 +841,18 @@ export default function RecipeDetailPage() {
                           <div className="space-y-4 mt-4">
                             <div>
                               <label className="form-label">Component *</label>
-                              <Select value={newComponent.component_recipe_id} onValueChange={(v) => setNewComponent({ ...newComponent, component_recipe_id: v })}>
+                              <Select value={newComponent.selection} onValueChange={(v) => setNewComponent({ selection: v })}>
                                 <SelectTrigger className="form-input" data-testid="select-component">
                                   <SelectValue placeholder="Select component" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-white border-[#E8E3D9]">
-                                  {components.map((comp) => (
-                                    <SelectItem key={comp.id} value={comp.id}>{comp.name}</SelectItem>
-                                  ))}
+                                <SelectContent className="bg-white border-[#E8E3D9] max-h-64">
+                                  {components.flatMap((comp) =>
+                                    (comp.variants || []).map((variant) => (
+                                      <SelectItem key={`${comp.id}|${variant.id}`} value={`${comp.id}|${variant.id}`}>
+                                        {comp.name} — {variant.name}
+                                      </SelectItem>
+                                    ))
+                                  )}
                                 </SelectContent>
                               </Select>
                             </div>
