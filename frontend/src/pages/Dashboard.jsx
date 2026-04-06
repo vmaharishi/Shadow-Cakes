@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import {
   CurrencyDollar,
@@ -13,7 +13,8 @@ import {
   Calendar,
   User,
   Receipt,
-  PencilSimple
+  PencilSimple,
+  Funnel
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
@@ -38,14 +46,9 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function Dashboard() {
   const [sales, setSales] = useState([]);
-  const [salesSummary, setSalesSummary] = useState({
-    total_revenue: 0,
-    total_cost: 0,
-    total_hourly_pay: 0,
-    total_profit: 0
-  });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [monthFilter, setMonthFilter] = useState("all");
 
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -57,12 +60,8 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const [salesRes, summaryRes] = await Promise.all([
-        axios.get(`${API}/sales`),
-        axios.get(`${API}/sales/summary`)
-      ]);
+      const salesRes = await axios.get(`${API}/sales`);
       setSales(salesRes.data);
-      setSalesSummary(summaryRes.data);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -73,6 +72,57 @@ export default function Dashboard() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Build month options from sales data
+  const monthOptions = useMemo(() => {
+    const months = new Map();
+    sales.forEach((sale) => {
+      if (!sale.sale_date) return;
+      const d = new Date(sale.sale_date + "T00:00:00");
+      if (isNaN(d)) return;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!months.has(key)) {
+        months.set(key, d.toLocaleString("en-CA", { month: "long", year: "numeric" }));
+      }
+    });
+    return Array.from(months.entries())
+      .sort((a, b) => b[0].localeCompare(a[0])); // newest first
+  }, [sales]);
+
+  // Filter sales by month + search
+  const filteredSales = useMemo(() => {
+    return sales.filter((sale) => {
+      // Month filter
+      if (monthFilter !== "all") {
+        if (!sale.sale_date) return false;
+        const d = new Date(sale.sale_date + "T00:00:00");
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        if (key !== monthFilter) return false;
+      }
+      // Text search
+      if (search) {
+        const q = search.toLowerCase();
+        return (
+          (sale.recipe_name || "").toLowerCase().includes(q) ||
+          (sale.customer_name || "").toLowerCase().includes(q) ||
+          (sale.variant_name || "").toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [sales, monthFilter, search]);
+
+  // Compute KPI summary from filtered sales
+  const salesSummary = useMemo(() => {
+    let total_revenue = 0, total_cost = 0, total_hourly_pay = 0, total_profit = 0;
+    filteredSales.forEach((s) => {
+      total_revenue += s.selling_price || 0;
+      total_cost += s.total_cost || 0;
+      total_hourly_pay += s.labour_cost || 0;
+      total_profit += s.profit || 0;
+    });
+    return { total_revenue, total_cost, total_hourly_pay, total_profit };
+  }, [filteredSales]);
 
   const handleDeleteSale = async (saleId) => {
     if (!window.confirm("Delete this sale record?")) return;
@@ -125,12 +175,6 @@ export default function Dashboard() {
       toast.error("Failed to update sale");
     }
   };
-
-  const filteredSales = sales.filter(sale =>
-    sale.recipe_name.toLowerCase().includes(search.toLowerCase()) ||
-    sale.customer_name.toLowerCase().includes(search.toLowerCase()) ||
-    sale.variant_name.toLowerCase().includes(search.toLowerCase())
-  );
 
   const handleExport = () => {
     if (filteredSales.length === 0) {
@@ -191,7 +235,7 @@ export default function Dashboard() {
         <div>
           <h1 className="page-title">Sales Dashboard</h1>
           <p className="text-sm text-[#5C554D] mt-1">
-            {sales.length} sale{sales.length !== 1 ? "s" : ""} recorded
+            {filteredSales.length} sale{filteredSales.length !== 1 ? "s" : ""}{monthFilter !== "all" ? ` in ${monthOptions.find(([k]) => k === monthFilter)?.[1] || monthFilter}` : " recorded"}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -228,6 +272,41 @@ export default function Dashboard() {
       </header>
 
       <div className="p-8">
+        {/* Month Filter */}
+        <div className="flex items-center gap-3 mb-6" data-testid="month-filter-section">
+          <Funnel className="w-4 h-4 text-[#5C554D] flex-shrink-0" />
+          <div className="w-56">
+            <Select value={monthFilter} onValueChange={setMonthFilter}>
+              <SelectTrigger
+                className="form-input"
+                data-testid="month-filter-select"
+              >
+                <SelectValue placeholder="All Time" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border-[#E8E3D9]">
+                <SelectItem value="all" data-testid="month-option-all">All Time</SelectItem>
+                {monthOptions.map(([key, label]) => (
+                  <SelectItem key={key} value={key} data-testid={`month-option-${key}`}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {monthFilter !== "all" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setMonthFilter("all")}
+              className="text-[#5C554D] hover:text-[#1A1A1A] text-xs"
+              data-testid="clear-month-filter"
+            >
+              <X className="w-3 h-3 mr-1" />
+              Clear
+            </Button>
+          )}
+        </div>
+
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 animate-fade-in-up">
           {salesCards.map((card, index) => (

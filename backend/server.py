@@ -120,6 +120,7 @@ class RecipeVariant(BaseModel):
     packaging: List[PackagingLineItem] = []
     components: List[ComponentRecipeRef] = []
     prep_time_minutes: float = 0
+    utility_time_minutes: float = 0
     notes: Optional[str] = None
 
 class RecipeBase(BaseModel):
@@ -137,10 +138,9 @@ class ComponentRecipe(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
+    category: Optional[str] = None
     batch_yield_grams: float = 0  # Required for gram costing
-    ingredients: List[RecipeLineItem] = []
-    packaging: List[PackagingLineItem] = []
-    prep_time_minutes: float = 0
+    variants: List[RecipeVariant] = []
     notes: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
@@ -220,18 +220,30 @@ async def get_ingredient_price(ingredient_id: str, price_id_override: Optional[s
         return IngredientPrice(**doc)
     return None
 
-async def calculate_component_cost(component_id: str, quantity: float, use_gram_costing: bool) -> Dict[str, Any]:
-    """Calculate cost for a component recipe"""
-    component = await db.component_recipes.find_one({"id": component_id}, {"_id": 0})
-    if not component:
+async def calculate_component_cost(component_id: str, quantity: float, use_gram_costing: bool, variant_id: Optional[str] = None) -> Dict[str, Any]:
+    """Calculate cost for a component recipe (uses first variant if variant_id not specified)"""
+    doc = await db.component_recipes.find_one({"id": component_id}, {"_id": 0})
+    if not doc:
         return {"error": f"Component {component_id} not found", "cost": 0}
     
-    component = ComponentRecipe(**component)
+    component = ComponentRecipe(**doc)
     settings = await get_settings()
+    
+    # Pick variant - use specified, or first variant, or legacy flat ingredients
+    variant = None
+    if component.variants:
+        if variant_id:
+            variant = next((v for v in component.variants if v.id == variant_id), None)
+        if not variant:
+            variant = component.variants[0]
+    
+    if not variant:
+        # No variants — empty component
+        return {"component_name": component.name, "quantity": quantity, "use_gram_costing": use_gram_costing, "batch_cost": 0, "cost": 0}
     
     # Calculate ingredient costs
     total_ingredient_cost = 0
-    for item in component.ingredients:
+    for item in variant.ingredients:
         price = await get_ingredient_price(item.ingredient_id)
         if price:
             cost = item.quantity * price.unit_cost
@@ -239,16 +251,17 @@ async def calculate_component_cost(component_id: str, quantity: float, use_gram_
     
     # Calculate packaging costs
     total_packaging_cost = 0
-    for item in component.packaging:
+    for item in variant.packaging:
         pkg = await db.packaging.find_one({"id": item.packaging_id}, {"_id": 0})
         if pkg:
             cost = item.quantity * pkg["unit_cost"]
             total_packaging_cost += cost
     
-    # Labour and utilities
-    hours = component.prep_time_minutes / 60
-    labour_cost = hours * settings.labour_rate_per_hour
-    utility_cost = hours * settings.utility_rate_per_hour
+    # Labour and utilities - separate times
+    prep_hours = variant.prep_time_minutes / 60
+    utility_hours = variant.utility_time_minutes / 60
+    labour_cost = prep_hours * settings.labour_rate_per_hour
+    utility_cost = utility_hours * settings.utility_rate_per_hour
     
     batch_cost = total_ingredient_cost + total_packaging_cost + labour_cost + utility_cost
     
@@ -516,10 +529,11 @@ async def calculate_variant_cost(recipe_id: str, variant_id: str, selling_price:
         breakdown.component_costs.append(comp_cost)
         breakdown.total_component_cost += comp_cost.get("cost", 0)
     
-    # Calculate labour and utility costs
-    hours = variant.prep_time_minutes / 60
-    breakdown.labour_cost = round(hours * settings.labour_rate_per_hour, 4)
-    breakdown.utility_cost = round(hours * settings.utility_rate_per_hour, 4)
+    # Calculate labour and utility costs (separate times)
+    prep_hours = variant.prep_time_minutes / 60
+    utility_hours = variant.utility_time_minutes / 60
+    breakdown.labour_cost = round(prep_hours * settings.labour_rate_per_hour, 4)
+    breakdown.utility_cost = round(utility_hours * settings.utility_rate_per_hour, 4)
     
     # Total cost
     breakdown.total_ingredient_cost = round(breakdown.total_ingredient_cost, 2)
@@ -544,6 +558,7 @@ async def calculate_variant_cost(recipe_id: str, variant_id: str, selling_price:
         "recipe_name": recipe["name"],
         "variant_name": variant.name,
         "prep_time_minutes": variant.prep_time_minutes,
+        "utility_time_minutes": variant.utility_time_minutes,
         "settings": settings.model_dump(),
         "breakdown": breakdown.model_dump()
     }
@@ -875,12 +890,22 @@ async def bulk_delete_sales(request: BulkDeleteRequest):
 async def import_component_recipes(file: UploadFile = File(...)):
     """
     Import component recipes from CSV or Excel.
-    Expected columns: component_name, batch_yield_grams, ingredient_name, quantity, unit, prep_time_minutes, notes
+    Same format as recipes: component_name, variant_name, ingredient_name, quantity, unit, prep_time_minutes, category, notes, batch_yield_grams
     """
     content = await file.read()
     headers, data_rows = parse_uploaded_file(content, file.filename)
     
-    required = ["component_name", "ingredient_name", "quantity", "unit"]
+    # Support both old and new column names
+    required = ["ingredient_name", "quantity", "unit"]
+    # component_name or recipe_name
+    has_component_name = "component_name" in headers
+    has_recipe_name = "recipe_name" in headers
+    if not has_component_name and not has_recipe_name:
+        raise HTTPException(status_code=400, detail="Missing required column: component_name or recipe_name")
+    
+    name_col = "component_name" if has_component_name else "recipe_name"
+    has_variant = "variant_name" in headers
+    
     missing = [r for r in required if r not in headers]
     if missing:
         raise HTTPException(status_code=400, detail=f"Missing required columns: {missing}")
@@ -888,7 +913,8 @@ async def import_component_recipes(file: UploadFile = File(...)):
     # Clear existing components (replace behavior)
     await db.component_recipes.delete_many({})
     
-    components_map = {}
+    components_map = {}  # name -> ComponentRecipe
+    variant_map = {}  # (comp_name, variant_name) -> RecipeVariant
     ingredients_list = await db.ingredients.find({}, {"_id": 0}).to_list(5000)
     ingredients_lookup = {i["name"].lower(): i for i in ingredients_list}
     
@@ -898,8 +924,9 @@ async def import_component_recipes(file: UploadFile = File(...)):
         try:
             row_dict = {headers[i]: row[i] if i < len(row) else None for i in range(len(headers))}
             
-            component_name = str(row_dict.get("component_name", "") or "").strip()
+            component_name = str(row_dict.get(name_col, "") or "").strip()
             ingredient_name = str(row_dict.get("ingredient_name", "") or "").strip()
+            variant_name = str(row_dict.get("variant_name", "Default") or "Default").strip() if has_variant else "Default"
             
             if not component_name or component_name.lower() == "none":
                 continue
@@ -907,12 +934,28 @@ async def import_component_recipes(file: UploadFile = File(...)):
             if component_name not in components_map:
                 components_map[component_name] = ComponentRecipe(
                     name=component_name,
+                    category=str(row_dict.get("category", "") or ""),
                     batch_yield_grams=float(row_dict.get("batch_yield_grams", 0) or 0),
-                    prep_time_minutes=float(row_dict.get("prep_time_minutes", 0) or 0),
-                    notes=str(row_dict.get("notes", "") or "")
+                    notes=str(row_dict.get("notes", "") or ""),
+                    variants=[]
                 )
             
             component = components_map[component_name]
+            key = (component_name, variant_name)
+            
+            if key not in variant_map:
+                prep_time = float(row_dict.get("prep_time_minutes", 0) or 0)
+                utility_time = float(row_dict.get("utility_time_minutes", 0) or 0)
+                variant = RecipeVariant(
+                    name=variant_name,
+                    prep_time_minutes=prep_time,
+                    utility_time_minutes=utility_time,
+                    notes=str(row_dict.get("notes", "") or "")
+                )
+                component.variants.append(variant)
+                variant_map[key] = variant
+            
+            variant = variant_map[key]
             
             if ingredient_name:
                 ingredient_key = ingredient_name.lower()
@@ -930,7 +973,7 @@ async def import_component_recipes(file: UploadFile = File(...)):
                     quantity=float(row_dict.get("quantity", 0) or 0),
                     unit=str(row_dict.get("unit", "g") or "g")
                 )
-                component.ingredients.append(line_item)
+                variant.ingredients.append(line_item)
                 
         except Exception as e:
             errors.append(f"Row {row_idx}: {str(e)}")
@@ -938,10 +981,94 @@ async def import_component_recipes(file: UploadFile = File(...)):
     for component in components_map.values():
         await db.component_recipes.insert_one(component.model_dump())
     
+    total_variants = sum(len(c.variants) for c in components_map.values())
+    
     return {
         "status": "success",
         "components_created": len(components_map),
+        "variants_created": total_variants,
         "errors": errors[:10] if errors else []
+    }
+
+# ---------- COMPONENT COST CALCULATION ----------
+@api_router.get("/component-recipes/{component_id}/variants/{variant_id}/cost")
+async def calculate_component_variant_cost(component_id: str, variant_id: str, selling_price: Optional[float] = None):
+    """Calculate full cost breakdown for a component variant (same as recipe cost)"""
+    doc = await db.component_recipes.find_one({"id": component_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Component not found")
+    
+    component = ComponentRecipe(**doc)
+    variant = next((v for v in component.variants if v.id == variant_id), None)
+    if not variant:
+        raise HTTPException(status_code=404, detail="Variant not found")
+    
+    settings = await get_settings()
+    breakdown = CostBreakdown()
+    
+    for item in variant.ingredients:
+        price = await get_ingredient_price(item.ingredient_id, item.price_id_override)
+        if price:
+            cost = item.quantity * price.unit_cost
+            breakdown.ingredient_costs.append({
+                "ingredient_name": item.ingredient_name,
+                "quantity": item.quantity,
+                "unit": item.unit,
+                "unit_cost": round(price.unit_cost, 4),
+                "store_vendor": price.store_vendor,
+                "brand": price.notes,
+                "is_override": item.price_id_override is not None,
+                "cost": round(cost, 4)
+            })
+            breakdown.total_ingredient_cost += cost
+    
+    for item in variant.packaging:
+        pkg = await db.packaging.find_one({"id": item.packaging_id}, {"_id": 0})
+        if pkg:
+            cost = item.quantity * pkg["unit_cost"]
+            breakdown.packaging_costs.append({
+                "packaging_name": item.packaging_name,
+                "quantity": item.quantity,
+                "unit_cost": pkg["unit_cost"],
+                "cost": round(cost, 4)
+            })
+            breakdown.total_packaging_cost += cost
+    
+    for comp_ref in variant.components:
+        comp_cost = await calculate_component_cost(
+            comp_ref.component_recipe_id,
+            comp_ref.quantity,
+            comp_ref.use_gram_costing
+        )
+        breakdown.component_costs.append(comp_cost)
+        breakdown.total_component_cost += comp_cost.get("cost", 0)
+    
+    prep_hours = variant.prep_time_minutes / 60
+    utility_hours = variant.utility_time_minutes / 60
+    breakdown.labour_cost = round(prep_hours * settings.labour_rate_per_hour, 4)
+    breakdown.utility_cost = round(utility_hours * settings.utility_rate_per_hour, 4)
+    
+    breakdown.total_ingredient_cost = round(breakdown.total_ingredient_cost, 2)
+    breakdown.total_packaging_cost = round(breakdown.total_packaging_cost, 2)
+    breakdown.total_component_cost = round(breakdown.total_component_cost, 2)
+    breakdown.total_cost = round(
+        breakdown.total_ingredient_cost + breakdown.total_packaging_cost +
+        breakdown.total_component_cost + breakdown.labour_cost + breakdown.utility_cost, 2
+    )
+    
+    if selling_price is not None and selling_price > 0:
+        breakdown.selling_price = selling_price
+        profit = selling_price - breakdown.total_cost
+        breakdown.profit_margin = round((profit / selling_price) * 100, 2)
+    
+    return {
+        "recipe_name": component.name,
+        "variant_name": variant.name,
+        "prep_time_minutes": variant.prep_time_minutes,
+        "utility_time_minutes": variant.utility_time_minutes,
+        "batch_yield_grams": component.batch_yield_grams,
+        "settings": settings.model_dump(),
+        "breakdown": breakdown.model_dump()
     }
 
 # Include the router in the main app

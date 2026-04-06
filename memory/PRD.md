@@ -11,8 +11,8 @@ Shadow Cakes needs a simple, reliable recipe costing app for personal use that r
 1. Recipe and component recipe costing
 2. Ingredient pricing by store/vendor with override capability
 3. Packaging costing as line items
-4. Labour costing based on time ($10/hr default)
-5. Utility costing based on time ($1/hr default)
+4. Labour costing based on prep time and labour rate per hour
+5. Utility costing based on utility time and utility rate per hour
 6. Recipe variants by size (e.g., 6-inch, 8-inch)
 7. Store/vendor override per ingredient line
 8. Enter selling price and calculate margin
@@ -24,25 +24,18 @@ Shadow Cakes needs a simple, reliable recipe costing app for personal use that r
 ## What's Been Implemented
 
 ### Backend (FastAPI + MongoDB)
-- [x] Ingredient master table with CRUD operations
-- [x] Ingredient vendor pricing records with unit cost calculation
-- [x] Packaging master table with CRUD operations (full fields: store_vendor, purchase_price, package_size, purchase_date)
-- [x] Recipe master table with variants support
-- [x] Recipe line items (ingredients per variant)
-- [x] Packaging line items (packaging per variant)
-- [x] Component recipes (reusable sub-recipes like frostings, ganaches)
-- [x] Settings for labour/utility rates
-- [x] Cost calculation engine with full breakdown
-- [x] CSV import for ingredients, recipes, packaging, components (TESTED)
-- [x] XLSX import for ingredients, recipes, packaging, components (TESTED)
-- [x] Replace behavior for imports (not merge)
+- [x] Full CRUD for ingredients, ingredient prices, packaging, recipes, components, sales
+- [x] Ingredient vendor pricing with unit cost calculation
+- [x] Recipe variants with separate prep_time_minutes and utility_time_minutes
+- [x] Component recipes restructured with variants (matching recipe structure)
+- [x] Cost calculation engine: separate labour (prep time) and utility (utility time)
+- [x] CSV/XLSX import for all entity types (tested and verified)
 - [x] Sales recording with labour_cost tracking
-- [x] Sales summary endpoint (GET /api/sales/summary)
-- [x] Bulk delete for ingredients, packaging, components, sales
-- [x] CSV export from all data tabs
+- [x] Sales summary, bulk delete, CSV export
+- [x] Component variant cost endpoint (/api/component-recipes/{id}/variants/{vid}/cost)
 
 ### Frontend (React + Shadcn UI)
-- [x] Dashboard with Sales Overview tracker (Total Sales, Revenue, Cost, Hourly Pay, Profit)
+- [x] **Sales Dashboard** with month filter (filters KPI cards + sales table by month)
 - [x] Recipe library with search and CRUD
 - [x] Recipe detail page with cost breakdown panel
 - [x] Variant management (add, edit, delete variants)
@@ -52,50 +45,45 @@ Shadow Cakes needs a simple, reliable recipe costing app for personal use that r
 - [x] Settings page for rates configuration
 - [x] Import page with CSV/XLSX support and drag & drop
 - [x] Selling price input with margin calculation (useRef, no lag)
-- [x] Vendor/store override per ingredient line
 - [x] Record a Sale popup from recipe detail
-- [x] Sales page with table, search, bulk delete, CSV export
+- [x] Sales page with search, bulk delete, CSV export
 
-### PWA Features (March 2026)
-- [x] manifest.json with Shadow Cakes branding, icons, standalone display
-- [x] Service worker with full offline caching (static assets + API responses)
-- [x] Network-first API caching with IndexedDB fallback
-- [x] Offline mutation queuing (POST/PUT/DELETE saved to IndexedDB, synced on reconnect)
-- [x] Background sync when coming back online
-- [x] Offline banner indicator (amber bar with pending count)
-- [x] Install App button in sidebar (via beforeinstallprompt)
-- [x] PWA icons generated from user's Shadow logo (72px to 512px)
-- [x] Apple touch icon and favicon
-- [x] apple-mobile-web-app-capable meta tags
+### PWA Features
+- [x] manifest.json with Shadow Cakes branding, standalone display
+- [x] Service worker with offline caching (network-first API, cache-first static)
+- [x] Offline mutation queuing via IndexedDB with background sync
+- [x] Offline banner indicator
+- [x] Install App button in Settings page
+- [x] PWA icons from user's Shadow logo (72px–512px)
 
-### Design
-- [x] Light theme with warm, earthy colors (Organic & Earthy)
-- [x] Outfit font for headings, Manrope for body
-- [x] JetBrains Mono for numeric values
-- [x] Phosphor icons (duotone)
-- [x] Professional bakery aesthetic
+## Recent Changes
 
-## Bug Fixes (March 2026)
-- [x] Fixed selling price input lag (useRef pattern prevents re-render during typing)
-- [x] Fixed packaging import missing store_vendor, purchase_price, package_size, purchase_date fields
-- [x] Fixed packaging import purchase_date datetime conversion for Excel files
-- [x] Verified CSV and XLSX import for all entity types (ingredients, recipes, packaging, components)
+### April 6, 2026
+- Added month filter to Sales Dashboard (filters KPI cards + table by month)
+- KPI summary now computed client-side from filtered sales data
+- Backend: Added `utility_time_minutes` to RecipeVariant model
+- Backend: Restructured ComponentRecipe to use variants (matching Recipe)
+- Backend: Separate labour/utility cost calculation (prep time → labour, utility time → utility)
+- Backend: Added `/api/component-recipes/{id}/variants/{vid}/cost` endpoint
+- Backend: Updated component import to support variant_name column
 
 ## Prioritized Backlog
 
-### P1 (High Priority) - Future
-- Batch duplication for recipes
-- Ingredient search/filter by vendor
-- Cost history tracking
-- Print/export cost breakdown to PDF
+### P0 (In Progress — from user's original message)
+- [ ] **Recipe detail page**: Add separate editable Prep Time and Utility Time fields per variant
+- [ ] **Components page**: Rebuild to match recipe structure (list page + detail page with variants)
 
-### P2 (Medium Priority) - Future
+### P1 (High Priority)
+- Recipe duplication feature
+- Print/Export cost breakdown to PDF
+
+### P2 (Medium Priority)
 - Recipe categories/tags filtering
-- Ingredient usage reports
+- Cost history tracking
 - Bulk edit capabilities
 - Dark mode option
 
-### P3 (Low Priority) - Future
+### P3 (Low Priority)
 - Recipe photos
 - Notes attachments
 - Keyboard shortcuts
@@ -107,22 +95,14 @@ Shadow Cakes needs a simple, reliable recipe costing app for personal use that r
 ├── backend/
 │   ├── server.py (FastAPI app, routes, DB motor logic, Data Models)
 │   ├── requirements.txt
-│   ├── tests/
-│   │   └── test_pwa_and_imports.py
 │   └── .env
 ├── frontend/
-│   ├── public/
-│   │   ├── index.html (PWA meta tags)
-│   │   ├── manifest.json
-│   │   ├── service-worker.js
-│   │   ├── icon-*.png (72, 96, 128, 144, 152, 192, 384, 512)
-│   │   ├── apple-touch-icon.png
-│   │   └── favicon.ico
+│   ├── public/ (manifest.json, service-worker.js, icons, index.html)
 │   ├── src/
 │   │   ├── serviceWorkerRegistration.js
-│   │   ├── components/ (Layout.jsx with offline banner + install btn)
-│   │   ├── hooks/ (useOnlineStatus.js)
-│   │   ├── pages/ (Dashboard, Recipes, Ingredients, Packaging, Components, Import, Settings)
+│   │   ├── components/ (Layout.jsx with offline banner)
+│   │   ├── hooks/ (useOnlineStatus.js, usePWA.js)
+│   │   ├── pages/ (Dashboard, Recipes, RecipeDetail, Ingredients, Packaging, Components, Import, Settings)
 │   │   ├── App.js, App.css, index.css, index.js
 │   │   └── lib/
 │   └── package.json
