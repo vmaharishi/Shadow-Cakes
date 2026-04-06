@@ -272,10 +272,10 @@ export default function Dashboard() {
       </header>
 
       <div className="p-8">
-        {/* Month Filter */}
+        {/* Filter & Search */}
         <div className="flex items-center gap-3 mb-6" data-testid="month-filter-section">
           <Funnel className="w-4 h-4 text-[#5C554D] flex-shrink-0" />
-          <div className="w-56">
+          <div className="w-48">
             <Select value={monthFilter} onValueChange={setMonthFilter}>
               <SelectTrigger
                 className="form-input"
@@ -305,6 +305,16 @@ export default function Dashboard() {
               Clear
             </Button>
           )}
+          <div className="relative w-64 ml-auto">
+            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5C554D]" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search sales..."
+              className="pl-9 form-input"
+              data-testid="search-sales-input"
+            />
+          </div>
         </div>
 
         {/* KPI Cards */}
@@ -329,20 +339,6 @@ export default function Dashboard() {
               <p className="text-xs text-[#5C554D] mt-1">{card.label}</p>
             </div>
           ))}
-        </div>
-
-        {/* Search */}
-        <div className="mb-6">
-          <div className="relative max-w-md">
-            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#5C554D]" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder=""
-              className="pl-10 form-input"
-              data-testid="search-sales-input"
-            />
-          </div>
         </div>
 
         {/* Sales Table */}
