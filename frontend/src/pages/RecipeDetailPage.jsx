@@ -67,7 +67,7 @@ export default function RecipeDetailPage() {
   
   const [newIngredient, setNewIngredient] = useState({ ingredient_id: "", quantity: "", unit: "g" });
   const [newPackaging, setNewPackaging] = useState({ packaging_id: "", quantity: 1 });
-  const [newComponent, setNewComponent] = useState({ component_recipe_id: "", quantity: 1, use_gram_costing: false });
+  const [newComponent, setNewComponent] = useState({ component_recipe_id: "" });
   const [newVariant, setNewVariant] = useState({ name: "", prep_time_minutes: 0, utility_time_minutes: 0 });
   const [editingPrepTime, setEditingPrepTime] = useState(false);
   const [tempPrepTime, setTempPrepTime] = useState(0);
@@ -269,8 +269,8 @@ export default function RecipeDetailPage() {
             id: crypto.randomUUID(),
             component_recipe_id: newComponent.component_recipe_id,
             component_name: comp?.name || "",
-            quantity: parseFloat(newComponent.quantity) || 1,
-            use_gram_costing: newComponent.use_gram_costing
+            quantity: 1,
+            use_gram_costing: false
           }]
         };
       }
@@ -278,7 +278,7 @@ export default function RecipeDetailPage() {
     });
     
     await handleSaveRecipe({ ...recipe, variants: updatedVariants });
-    setNewComponent({ component_recipe_id: "", quantity: 1, use_gram_costing: false });
+    setNewComponent({ component_recipe_id: "" });
     setAddComponentOpen(false);
   };
 
@@ -848,29 +848,6 @@ export default function RecipeDetailPage() {
                                 </SelectContent>
                               </Select>
                             </div>
-                            <div>
-                              <label className="form-label">Quantity (grams or batch multiplier)</label>
-                              <Input
-                                type="number"
-                                value={newComponent.quantity}
-                                onChange={(e) => setNewComponent({ ...newComponent, quantity: e.target.value })}
-                                className="form-input"
-                                data-testid="component-quantity"
-                              />
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                id="gramCosting"
-                                checked={newComponent.use_gram_costing}
-                                onChange={(e) => setNewComponent({ ...newComponent, use_gram_costing: e.target.checked })}
-                                className="rounded border-[#E8E3D9]"
-                                data-testid="gram-costing-checkbox"
-                              />
-                              <label htmlFor="gramCosting" className="text-sm text-[#5C554D]">
-                                Use gram costing (quantity = grams needed)
-                              </label>
-                            </div>
                             <Button onClick={handleAddComponent} className="w-full bg-[#2C1E16] hover:bg-[#3E2A1F]" data-testid="confirm-add-component">
                               Add Component
                             </Button>
@@ -886,8 +863,6 @@ export default function RecipeDetailPage() {
                         <thead>
                           <tr>
                             <th className="table-header-cell">Component</th>
-                            <th className="table-header-cell text-right">Qty</th>
-                            <th className="table-header-cell">Type</th>
                             <th className="table-header-cell w-12"></th>
                           </tr>
                         </thead>
@@ -895,12 +870,6 @@ export default function RecipeDetailPage() {
                           {selectedVariant.components?.map((item) => (
                             <tr key={item.id} className="table-row">
                               <td className="table-cell font-medium">{item.component_name}</td>
-                              <td className="table-cell-numeric">{item.quantity}</td>
-                              <td className="table-cell">
-                                <span className="text-xs px-2 py-1 rounded bg-[#F4F1EA]">
-                                  {item.use_gram_costing ? "grams" : "batch"}
-                                </span>
-                              </td>
                               <td className="table-cell">
                                 <button 
                                   onClick={() => handleRemoveComponent(item.id)}
