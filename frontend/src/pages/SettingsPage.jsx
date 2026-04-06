@@ -82,37 +82,13 @@ export default function SettingsPage() {
             </div>
           </div>
           
-          {/* Currency */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="form-label">
-                Currency
-              </label>
-              <Input
-                value={settings.currency}
-                onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
-                className="form-input"
-                data-testid="currency-input"
-              />
-            </div>
-            <div>
-              <label className="form-label">Currency Symbol</label>
-              <Input
-                value={settings.currency_symbol}
-                onChange={(e) => setSettings({ ...settings, currency_symbol: e.target.value })}
-                className="form-input"
-                data-testid="currency-symbol-input"
-              />
-            </div>
-          </div>
-          
           {/* Labour Rate */}
           <div>
             <label className="form-label">
               Labour Rate per Hour
             </label>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-medium text-[#5C554D]">{settings.currency_symbol}</span>
+              <span className="text-lg font-medium text-[#5C554D]">$</span>
               <Input
                 type="number"
                 step="0.01"
@@ -134,7 +110,7 @@ export default function SettingsPage() {
               Utility Rate per Hour
             </label>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-medium text-[#5C554D]">{settings.currency_symbol}</span>
+              <span className="text-lg font-medium text-[#5C554D]">$</span>
               <Input
                 type="number"
                 step="0.01"
