@@ -26,7 +26,8 @@ const ImportSection = ({
   icon: Icon,
   columns,
   templateName,
-  onSuccess 
+  onSuccess,
+  disclaimer
 }) => {
   const [file, setFile] = useState(null);
   const [dragging, setDragging] = useState(false);
@@ -110,6 +111,9 @@ const ImportSection = ({
         <div>
           <h3 className="font-outfit font-medium text-lg text-[#1A1A1A]">{title}</h3>
           <p className="text-sm text-[#5C554D] mt-1">{description}</p>
+          {disclaimer && (
+            <p className="text-xs text-[#D99441] font-medium mt-2">{disclaimer}</p>
+          )}
         </div>
       </div>
       
@@ -356,7 +360,8 @@ export default function ImportPage() {
           <TabsContent value="sales">
             <ImportSection
               title="Import Sales"
-              description="Upload sales data using the same CSV format as the Sales Dashboard export. Sales are added to your existing records (not replaced)."
+              description="Upload sales data using the same CSV format as the Sales Dashboard export."
+              disclaimer="Appends to existing records (does not replace)."
               endpoint="/import/sales"
               icon={Receipt}
               columns={["Sale Date", "Recipe", "Variant", "Customer", "Selling Price", "Total Cost", "Labour Cost", "Profit", "Profit Margin", "Notes"]}
