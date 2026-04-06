@@ -35,7 +35,7 @@ export default function ComponentsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [newComponent, setNewComponent] = useState({ name: "", category: "", batch_yield_grams: 0, notes: "" });
+  const [newComponent, setNewComponent] = useState({ name: "", category: "", notes: "" });
   const [newVariant, setNewVariant] = useState({ name: "", prep_time_minutes: 0, utility_time_minutes: 0 });
 
   const fetchComponents = async () => {
@@ -63,7 +63,6 @@ export default function ComponentsPage() {
     try {
       const data = {
         ...newComponent,
-        batch_yield_grams: parseFloat(newComponent.batch_yield_grams) || 0,
         variants: newVariant.name ? [{
           name: newVariant.name,
           prep_time_minutes: parseFloat(newVariant.prep_time_minutes) || 0,
@@ -77,7 +76,7 @@ export default function ComponentsPage() {
       await axios.post(`${API}/component-recipes`, data);
       toast.success("Component created successfully");
       setDialogOpen(false);
-      setNewComponent({ name: "", category: "", batch_yield_grams: 0, notes: "" });
+      setNewComponent({ name: "", category: "", notes: "" });
       setNewVariant({ name: "", prep_time_minutes: 0, utility_time_minutes: 0 });
       fetchComponents();
     } catch (error) {
@@ -105,7 +104,7 @@ export default function ComponentsPage() {
       return;
     }
     
-    const headers = ["recipe_name", "variant_name", "ingredient_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "category", "notes", "batch_yield_grams"];
+    const headers = ["recipe_name", "variant_name", "ingredient_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "category", "notes"];
     const rows = [];
     
     components.forEach(comp => {
@@ -122,16 +121,15 @@ export default function ComponentsPage() {
                 idx === 0 ? (variant.prep_time_minutes || 0) : "",
                 idx === 0 ? (variant.utility_time_minutes || 0) : "",
                 idx === 0 ? (comp.category || "") : "",
-                idx === 0 ? (comp.notes || "") : "",
-                idx === 0 ? (comp.batch_yield_grams || 0) : ""
+                idx === 0 ? (comp.notes || "") : ""
               ]);
             });
           } else {
-            rows.push([comp.name, variant.name, "", "", "", variant.prep_time_minutes || 0, variant.utility_time_minutes || 0, comp.category || "", comp.notes || "", comp.batch_yield_grams || 0]);
+            rows.push([comp.name, variant.name, "", "", "", variant.prep_time_minutes || 0, variant.utility_time_minutes || 0, comp.category || "", comp.notes || ""]);
           }
         });
       } else {
-        rows.push([comp.name, "", "", "", "", "", "", comp.category || "", comp.notes || "", comp.batch_yield_grams || 0]);
+        rows.push([comp.name, "", "", "", "", "", "", comp.category || "", comp.notes || ""]);
       }
     });
     
@@ -203,17 +201,6 @@ export default function ComponentsPage() {
                     placeholder="e.g., Frostings, Fillings"
                     className="form-input"
                     data-testid="component-category-input"
-                  />
-                </div>
-                <div>
-                  <label className="form-label">Batch Yield (grams)</label>
-                  <Input
-                    type="number"
-                    value={newComponent.batch_yield_grams}
-                    onChange={(e) => setNewComponent({ ...newComponent, batch_yield_grams: e.target.value })}
-                    placeholder="0"
-                    className="form-input"
-                    data-testid="component-batch-yield-input"
                   />
                 </div>
                 <div>
@@ -337,9 +324,6 @@ export default function ComponentsPage() {
                 </h3>
                 {comp.category && (
                   <p className="text-sm text-[#5C554D] mb-1">{comp.category}</p>
-                )}
-                {comp.batch_yield_grams > 0 && (
-                  <p className="text-xs text-[#8B7E73]">Yield: {comp.batch_yield_grams}g</p>
                 )}
                 <div className="flex flex-wrap gap-2 mt-3">
                   {comp.variants?.slice(0, 3).map((variant) => (

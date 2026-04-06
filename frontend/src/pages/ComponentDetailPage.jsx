@@ -305,7 +305,6 @@ export default function ComponentDetailPage() {
             <h1 className="page-title">{component.name}</h1>
             <p className="text-sm text-[#5C554D] mt-1">
               {component.category || "Component Recipe"}
-              {component.batch_yield_grams > 0 && ` · Yield: ${component.batch_yield_grams}g`}
             </p>
           </div>
         </div>
@@ -422,24 +421,6 @@ export default function ComponentDetailPage() {
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-medium">{selectedVariant.utility_time_minutes || 0} min</span>
                         <button onClick={() => { setEditingUtilityTime(true); setTempUtilityTime(selectedVariant.utility_time_minutes || 0); }} className="p-1 hover:bg-[#F4F1EA] rounded" data-testid="edit-utility-time-btn">
-                          <PencilSimple className="w-4 h-4 text-[#5C554D]" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Flask className="w-5 h-5 text-[#C57B57]" />
-                    <span className="text-sm text-[#5C554D]">Batch Yield:</span>
-                    {editingBatchYield ? (
-                      <div className="flex items-center gap-2">
-                        <Input type="number" value={tempBatchYield} onChange={(e) => setTempBatchYield(e.target.value)} className="w-24 form-input py-1" data-testid="edit-batch-yield-input" />
-                        <span className="text-sm">g</span>
-                        <Button size="sm" onClick={handleSaveBatchYield} className="bg-[#4A6B53] hover:bg-[#3d5a45]" data-testid="save-batch-yield"><Check className="w-4 h-4" /></Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-medium">{component.batch_yield_grams || 0} g</span>
-                        <button onClick={() => { setEditingBatchYield(true); setTempBatchYield(component.batch_yield_grams || 0); }} className="p-1 hover:bg-[#F4F1EA] rounded" data-testid="edit-batch-yield-btn">
                           <PencilSimple className="w-4 h-4 text-[#5C554D]" />
                         </button>
                       </div>
@@ -690,15 +671,6 @@ export default function ComponentDetailPage() {
                     <span>Total Cost</span>
                     <span className="font-mono text-[#2C1E16]">${costBreakdown.breakdown.total_cost.toFixed(2)}</span>
                   </div>
-
-                  {costBreakdown.batch_yield_grams > 0 && (
-                    <div className="pt-3 border-t border-[#E8E3D9]">
-                      <div className="cost-line text-sm">
-                        <span>Cost per gram</span>
-                        <span className="font-mono">${(costBreakdown.breakdown.total_cost / costBreakdown.batch_yield_grams).toFixed(4)}/g</span>
-                      </div>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <p className="text-center py-8 text-[#5C554D]">Select a variant to see costs</p>
