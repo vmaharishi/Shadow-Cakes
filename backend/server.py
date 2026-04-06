@@ -888,6 +888,94 @@ async def bulk_delete_sales(request: BulkDeleteRequest):
             deleted_count += 1
     return {"status": "success", "deleted_count": deleted_count}
 
+@api_router.post("/import/sales")
+async def import_sales(file: UploadFile = File(...)):
+    """
+    Import sales from CSV or Excel.
+    Uses the exact same format as the export:
+    Sale Date, Recipe, Variant, Customer, Selling Price, Total Cost, Labour Cost, Profit, Profit Margin, Notes
+    """
+    content = await file.read()
+    headers, data_rows = parse_uploaded_file(content, file.filename)
+    
+    # Map exported header names to internal field names
+    header_map = {
+        "sale date": "sale_date",
+        "recipe": "recipe_name",
+        "variant": "variant_name",
+        "customer": "customer_name",
+        "selling price": "selling_price",
+        "total cost": "total_cost",
+        "labour cost": "labour_cost",
+        "profit": "profit",
+        "profit margin": "profit_margin",
+        "notes": "notes",
+    }
+    
+    # Normalize headers (lowercase for matching)
+    normalized = [header_map.get(h.strip().lower(), h.strip().lower()) for h in headers]
+    
+    required = ["sale_date", "recipe_name", "selling_price", "total_cost"]
+    missing = [r for r in required if r not in normalized]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Missing required columns: {missing}. Expected headers: Sale Date, Recipe, Variant, Customer, Selling Price, Total Cost, Labour Cost, Profit, Profit Margin, Notes")
+    
+    sales_created = 0
+    errors = []
+    
+    for row_idx, row in enumerate(data_rows, start=2):
+        try:
+            row_dict = {normalized[i]: row[i] if i < len(row) else None for i in range(len(normalized))}
+            
+            sale_date = row_dict.get("sale_date", "")
+            if isinstance(sale_date, datetime):
+                sale_date = sale_date.strftime("%Y-%m-%d")
+            else:
+                sale_date = str(sale_date or "").strip()
+            
+            if not sale_date:
+                continue
+            
+            selling_price = float(str(row_dict.get("selling_price", 0) or 0).replace("$", "").replace(",", ""))
+            total_cost = float(str(row_dict.get("total_cost", 0) or 0).replace("$", "").replace(",", ""))
+            labour_cost = float(str(row_dict.get("labour_cost", 0) or 0).replace("$", "").replace(",", ""))
+            
+            # Parse profit — calculate if not provided
+            profit_raw = str(row_dict.get("profit", "") or "").replace("$", "").replace(",", "")
+            profit = float(profit_raw) if profit_raw else selling_price - total_cost
+            
+            # Parse margin — calculate if not provided
+            margin_raw = str(row_dict.get("profit_margin", "") or "").replace("%", "").strip()
+            if margin_raw:
+                profit_margin = float(margin_raw)
+            else:
+                profit_margin = round((profit / selling_price) * 100, 2) if selling_price > 0 else 0
+            
+            sale = Sale(
+                recipe_id="",
+                recipe_name=str(row_dict.get("recipe_name", "") or "").strip(),
+                variant_name=str(row_dict.get("variant_name", "") or "").strip(),
+                sale_date=sale_date,
+                customer_name=str(row_dict.get("customer_name", "") or "").strip(),
+                notes=str(row_dict.get("notes", "") or "").strip(),
+                selling_price=selling_price,
+                total_cost=total_cost,
+                labour_cost=labour_cost,
+                profit=profit,
+                profit_margin=profit_margin,
+            )
+            await db.sales.insert_one(sale.model_dump())
+            sales_created += 1
+            
+        except Exception as e:
+            errors.append(f"Row {row_idx}: {str(e)}")
+    
+    return {
+        "status": "success",
+        "sales_imported": sales_created,
+        "errors": errors[:10] if errors else []
+    }
+
 @api_router.post("/import/components")
 async def import_component_recipes(file: UploadFile = File(...)):
     """

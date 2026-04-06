@@ -10,7 +10,8 @@ import {
   Carrot,
   Cake,
   Package,
-  Flask
+  Flask,
+  Receipt
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -298,6 +299,14 @@ export default function ImportPage() {
               <Flask className="w-4 h-4 mr-2" />
               Components
             </TabsTrigger>
+            <TabsTrigger 
+              value="sales"
+              className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md px-4"
+              data-testid="tab-import-sales"
+            >
+              <Receipt className="w-4 h-4 mr-2" />
+              Sales
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="ingredients">
@@ -341,6 +350,17 @@ export default function ImportPage() {
               icon={Flask}
               columns={["component_name", "variant_name", "batch_yield_grams", "ingredient_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "notes"]}
               templateName="component_recipes"
+            />
+          </TabsContent>
+          
+          <TabsContent value="sales">
+            <ImportSection
+              title="Import Sales"
+              description="Upload sales data using the same CSV format as the Sales Dashboard export. Sales are added to your existing records (not replaced)."
+              endpoint="/import/sales"
+              icon={Receipt}
+              columns={["Sale Date", "Recipe", "Variant", "Customer", "Selling Price", "Total Cost", "Labour Cost", "Profit", "Profit Margin", "Notes"]}
+              templateName="sales"
             />
           </TabsContent>
         </Tabs>
