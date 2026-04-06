@@ -642,7 +642,7 @@ async def import_ingredient_pricing(file: UploadFile = File(...)):
 async def import_recipes(file: UploadFile = File(...)):
     """
     Import recipes from CSV or Excel.
-    Expected columns: recipe_name, variant_name, ingredient_name, quantity, unit, prep_time_minutes, category, notes
+    Expected columns: recipe_name, variant_name, ingredient_name, quantity, unit, prep_time_minutes, utility_time_minutes, category, notes
     """
     content = await file.read()
     headers, data_rows = parse_uploaded_file(content, file.filename)
@@ -693,9 +693,11 @@ async def import_recipes(file: UploadFile = File(...)):
             
             if not variant:
                 prep_time = float(row_dict.get("prep_time_minutes", 0) or 0)
+                utility_time = float(row_dict.get("utility_time_minutes", 0) or 0)
                 variant = RecipeVariant(
                     name=variant_name,
                     prep_time_minutes=prep_time,
+                    utility_time_minutes=utility_time,
                     notes=str(row_dict.get("notes", "") or "")
                 )
                 recipe.variants.append(variant)

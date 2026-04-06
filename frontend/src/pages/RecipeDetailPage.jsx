@@ -68,9 +68,11 @@ export default function RecipeDetailPage() {
   const [newIngredient, setNewIngredient] = useState({ ingredient_id: "", quantity: "", unit: "g" });
   const [newPackaging, setNewPackaging] = useState({ packaging_id: "", quantity: 1 });
   const [newComponent, setNewComponent] = useState({ component_recipe_id: "", quantity: 1, use_gram_costing: false });
-  const [newVariant, setNewVariant] = useState({ name: "", prep_time_minutes: 0 });
+  const [newVariant, setNewVariant] = useState({ name: "", prep_time_minutes: 0, utility_time_minutes: 0 });
   const [editingPrepTime, setEditingPrepTime] = useState(false);
   const [tempPrepTime, setTempPrepTime] = useState(0);
+  const [editingUtilityTime, setEditingUtilityTime] = useState(false);
+  const [tempUtilityTime, setTempUtilityTime] = useState(0);
   
   // Sale recording state
   const [saleDialogOpen, setSaleDialogOpen] = useState(false);
@@ -303,13 +305,14 @@ export default function RecipeDetailPage() {
       id: crypto.randomUUID(),
       name: newVariant.name,
       prep_time_minutes: parseFloat(newVariant.prep_time_minutes) || 0,
+      utility_time_minutes: parseFloat(newVariant.utility_time_minutes) || 0,
       ingredients: [],
       packaging: [],
       components: []
     };
     
     await handleSaveRecipe({ ...recipe, variants: [...recipe.variants, variant] });
-    setNewVariant({ name: "", prep_time_minutes: 0 });
+    setNewVariant({ name: "", prep_time_minutes: 0, utility_time_minutes: 0 });
     setAddVariantOpen(false);
     setSelectedVariantId(variant.id);
   };
@@ -335,6 +338,17 @@ export default function RecipeDetailPage() {
     });
     await handleSaveRecipe({ ...recipe, variants: updatedVariants });
     setEditingPrepTime(false);
+  };
+
+  const handleSaveUtilityTime = async () => {
+    const updatedVariants = recipe.variants.map(v => {
+      if (v.id === selectedVariantId) {
+        return { ...v, utility_time_minutes: parseFloat(tempUtilityTime) || 0 };
+      }
+      return v;
+    });
+    await handleSaveRecipe({ ...recipe, variants: updatedVariants });
+    setEditingUtilityTime(false);
   };
 
   const handleRecordSale = async () => {
@@ -451,6 +465,16 @@ export default function RecipeDetailPage() {
                           data-testid="new-variant-prep-time"
                         />
                       </div>
+                      <div>
+                        <label className="form-label">Utility Time (minutes)</label>
+                        <Input
+                          type="number"
+                          value={newVariant.utility_time_minutes}
+                          onChange={(e) => setNewVariant({ ...newVariant, utility_time_minutes: e.target.value })}
+                          className="form-input"
+                          data-testid="new-variant-utility-time"
+                        />
+                      </div>
                       <Button onClick={handleAddVariant} className="w-full bg-[#2C1E16] hover:bg-[#3E2A1F]" data-testid="confirm-add-variant">
                         Add Variant
                       </Button>
@@ -478,8 +502,8 @@ export default function RecipeDetailPage() {
 
             {selectedVariant && (
               <>
-                {/* Prep Time */}
-                <div className="card-flat p-4">
+                {/* Prep Time & Utility Time */}
+                <div className="card-flat p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Clock className="w-5 h-5 text-[#5C554D]" />
@@ -521,6 +545,36 @@ export default function RecipeDetailPage() {
                       <Trash className="w-4 h-4 mr-1" />
                       Delete Variant
                     </Button>
+                  </div>
+                  <div className="flex items-center gap-3 pl-0">
+                    <Lightning className="w-5 h-5 text-[#D99441]" />
+                    <span className="text-sm text-[#5C554D]">Utility Time:</span>
+                    {editingUtilityTime ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={tempUtilityTime}
+                          onChange={(e) => setTempUtilityTime(e.target.value)}
+                          className="w-24 form-input py-1"
+                          data-testid="edit-utility-time-input"
+                        />
+                        <span className="text-sm">min</span>
+                        <Button size="sm" onClick={handleSaveUtilityTime} className="bg-[#4A6B53] hover:bg-[#3d5a45]" data-testid="save-utility-time">
+                          <Check className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-medium">{selectedVariant.utility_time_minutes || 0} min</span>
+                        <button 
+                          onClick={() => { setEditingUtilityTime(true); setTempUtilityTime(selectedVariant.utility_time_minutes || 0); }}
+                          className="p-1 hover:bg-[#F4F1EA] rounded"
+                          data-testid="edit-utility-time-btn"
+                        >
+                          <PencilSimple className="w-4 h-4 text-[#5C554D]" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -907,7 +961,7 @@ export default function RecipeDetailPage() {
                     <span className="font-mono">${costBreakdown.breakdown.labour_cost.toFixed(2)}</span>
                   </div>
                   <div className="cost-line text-sm">
-                    <span>Utilities ({costBreakdown.prep_time_minutes} min @ ${costBreakdown.settings.utility_rate_per_hour}/hr)</span>
+                    <span>Utilities ({costBreakdown.utility_time_minutes || 0} min @ ${costBreakdown.settings.utility_rate_per_hour}/hr)</span>
                     <span className="font-mono">${costBreakdown.breakdown.utility_cost.toFixed(2)}</span>
                   </div>
                   

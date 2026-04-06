@@ -317,7 +317,7 @@ export default function ImportPage() {
               description="Upload your recipes spreadsheet. Each row represents an ingredient in a recipe variant."
               endpoint="/import/recipes"
               icon={Cake}
-              columns={["recipe_name", "variant_name", "ingredient_name", "quantity", "unit", "prep_time_minutes", "category", "notes"]}
+              columns={["recipe_name", "variant_name", "ingredient_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "category", "notes"]}
               templateName="recipes"
             />
           </TabsContent>
@@ -339,7 +339,7 @@ export default function ImportPage() {
               description="Upload your component recipes (frostings, ganaches, fillings, etc.)."
               endpoint="/import/components"
               icon={Flask}
-              columns={["component_name", "batch_yield_grams", "ingredient_name", "quantity", "unit", "prep_time_minutes", "notes"]}
+              columns={["component_name", "variant_name", "batch_yield_grams", "ingredient_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "notes"]}
               templateName="component_recipes"
             />
           </TabsContent>
