@@ -311,7 +311,7 @@ export default function Dashboard() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search sales..."
-              className="pl-9 form-input"
+              className="pl-10 form-input"
               data-testid="search-sales-input"
             />
           </div>
