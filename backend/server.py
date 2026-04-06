@@ -642,23 +642,41 @@ async def import_ingredient_pricing(file: UploadFile = File(...)):
 async def import_recipes(file: UploadFile = File(...)):
     """
     Import recipes from CSV or Excel.
-    Expected columns: recipe_name, variant_name, ingredient_name, quantity, unit, prep_time_minutes, utility_time_minutes, category, notes
+    New format: recipe_name, variant_name, line_type, item_name, quantity, unit, prep_time_minutes, utility_time_minutes, category, notes
+    Also supports legacy format: recipe_name, variant_name, ingredient_name, quantity, unit, ...
+    line_type = ingredient | packaging | component
     """
     content = await file.read()
     headers, data_rows = parse_uploaded_file(content, file.filename)
     
-    required = ["recipe_name", "variant_name", "ingredient_name", "quantity", "unit"]
-    missing = [r for r in required if r not in headers]
-    if missing:
-        raise HTTPException(status_code=400, detail=f"Missing required columns: {missing}")
+    # Detect format: new (has line_type + item_name) or legacy (has ingredient_name)
+    has_line_type = "line_type" in headers and "item_name" in headers
+    has_legacy = "ingredient_name" in headers
+    
+    if not has_line_type and not has_legacy:
+        raise HTTPException(status_code=400, detail="Missing required columns. Expected either (line_type, item_name) or (ingredient_name)")
+    
+    if "recipe_name" not in headers or "variant_name" not in headers:
+        raise HTTPException(status_code=400, detail="Missing required columns: recipe_name, variant_name")
     
     # Clear existing recipes (replace behavior)
     await db.recipes.delete_many({})
     
-    # Build recipe structure
-    recipes_map = {}  # recipe_name -> Recipe
+    recipes_map = {}
     ingredients_list = await db.ingredients.find({}, {"_id": 0}).to_list(5000)
     ingredients_lookup = {i["name"].lower(): i for i in ingredients_list}
+    packaging_list = await db.packaging.find({}, {"_id": 0}).to_list(5000)
+    packaging_lookup = {p["name"].lower(): p for p in packaging_list}
+    components_list = await db.component_recipes.find({}, {"_id": 0}).to_list(5000)
+    # Build component lookup: "name — variant" -> (comp_id, variant_id)
+    component_lookup = {}
+    for comp in components_list:
+        for var in comp.get("variants", []):
+            key = f"{comp['name']} — {var['name']}".lower()
+            component_lookup[key] = {"comp_id": comp["id"], "comp_name": f"{comp['name']} — {var['name']}"}
+        # Also just by name (picks first variant)
+        if comp.get("variants"):
+            component_lookup[comp["name"].lower()] = {"comp_id": comp["id"], "comp_name": comp["name"]}
     
     errors = []
     
@@ -668,10 +686,17 @@ async def import_recipes(file: UploadFile = File(...)):
             
             recipe_name = str(row_dict.get("recipe_name", "") or "").strip()
             variant_name = str(row_dict.get("variant_name", "") or "").strip()
-            ingredient_name = str(row_dict.get("ingredient_name", "") or "").strip()
             
             if not recipe_name or not variant_name:
                 continue
+            
+            # Determine line_type and item_name
+            if has_line_type:
+                line_type = str(row_dict.get("line_type", "ingredient") or "ingredient").strip().lower()
+                item_name = str(row_dict.get("item_name", "") or "").strip()
+            else:
+                line_type = "ingredient"
+                item_name = str(row_dict.get("ingredient_name", "") or "").strip()
             
             # Get or create recipe
             if recipe_name not in recipes_map:
@@ -685,12 +710,7 @@ async def import_recipes(file: UploadFile = File(...)):
             recipe = recipes_map[recipe_name]
             
             # Get or create variant
-            variant = None
-            for v in recipe.variants:
-                if v.name == variant_name:
-                    variant = v
-                    break
-            
+            variant = next((v for v in recipe.variants if v.name == variant_name), None)
             if not variant:
                 prep_time = float(row_dict.get("prep_time_minutes", 0) or 0)
                 utility_time = float(row_dict.get("utility_time_minutes", 0) or 0)
@@ -702,30 +722,53 @@ async def import_recipes(file: UploadFile = File(...)):
                 )
                 recipe.variants.append(variant)
             
-            # Add ingredient line item
-            if ingredient_name:
-                ingredient_key = ingredient_name.lower()
+            if not item_name:
+                continue
+            
+            if line_type == "ingredient":
+                ingredient_key = item_name.lower()
                 ingredient_id = ingredients_lookup.get(ingredient_key, {}).get("id", "")
-                
                 if not ingredient_id:
-                    # Create ingredient if not exists
-                    new_ing = Ingredient(name=ingredient_name, default_unit=str(row_dict.get("unit", "g") or "g"))
+                    new_ing = Ingredient(name=item_name, default_unit=str(row_dict.get("unit", "g") or "g"))
                     await db.ingredients.insert_one(new_ing.model_dump())
                     ingredients_lookup[ingredient_key] = new_ing.model_dump()
                     ingredient_id = new_ing.id
                 
-                line_item = RecipeLineItem(
+                variant.ingredients.append(RecipeLineItem(
                     ingredient_id=ingredient_id,
-                    ingredient_name=ingredient_name,
+                    ingredient_name=item_name,
                     quantity=float(row_dict.get("quantity", 0) or 0),
                     unit=str(row_dict.get("unit", "g") or "g")
-                )
-                variant.ingredients.append(line_item)
+                ))
+            
+            elif line_type == "packaging":
+                pkg_key = item_name.lower()
+                pkg = packaging_lookup.get(pkg_key)
+                if pkg:
+                    variant.packaging.append(PackagingLineItem(
+                        packaging_id=pkg["id"],
+                        packaging_name=item_name,
+                        quantity=float(row_dict.get("quantity", 1) or 1)
+                    ))
+                else:
+                    errors.append(f"Row {row_idx}: Packaging '{item_name}' not found")
+            
+            elif line_type == "component":
+                comp_key = item_name.lower()
+                comp_info = component_lookup.get(comp_key)
+                if comp_info:
+                    variant.components.append(ComponentRecipeRef(
+                        component_recipe_id=comp_info["comp_id"],
+                        component_name=comp_info["comp_name"],
+                        quantity=1,
+                        use_gram_costing=False
+                    ))
+                else:
+                    errors.append(f"Row {row_idx}: Component '{item_name}' not found")
                 
         except Exception as e:
             errors.append(f"Row {row_idx}: {str(e)}")
     
-    # Save all recipes
     for recipe in recipes_map.values():
         await db.recipes.insert_one(recipe.model_dump())
     
@@ -980,14 +1023,17 @@ async def import_sales(file: UploadFile = File(...)):
 async def import_component_recipes(file: UploadFile = File(...)):
     """
     Import component recipes from CSV or Excel.
-    Same format as recipes: component_name, variant_name, ingredient_name, quantity, unit, prep_time_minutes, category, notes, batch_yield_grams
+    New format: recipe_name, variant_name, line_type, item_name, quantity, unit, prep_time_minutes, utility_time_minutes, category, notes
+    Also supports legacy format with ingredient_name column.
     """
     content = await file.read()
     headers, data_rows = parse_uploaded_file(content, file.filename)
     
-    # Support both old and new column names
-    required = ["ingredient_name", "quantity", "unit"]
-    # component_name or recipe_name
+    # Detect format
+    has_line_type = "line_type" in headers and "item_name" in headers
+    has_legacy_ingredient = "ingredient_name" in headers
+    
+    # Support component_name or recipe_name
     has_component_name = "component_name" in headers
     has_recipe_name = "recipe_name" in headers
     if not has_component_name and not has_recipe_name:
@@ -996,17 +1042,17 @@ async def import_component_recipes(file: UploadFile = File(...)):
     name_col = "component_name" if has_component_name else "recipe_name"
     has_variant = "variant_name" in headers
     
-    missing = [r for r in required if r not in headers]
-    if missing:
-        raise HTTPException(status_code=400, detail=f"Missing required columns: {missing}")
+    if not has_line_type and not has_legacy_ingredient:
+        raise HTTPException(status_code=400, detail="Missing required columns. Expected either (line_type, item_name) or (ingredient_name)")
     
-    # Clear existing components (replace behavior)
     await db.component_recipes.delete_many({})
     
-    components_map = {}  # name -> ComponentRecipe
-    variant_map = {}  # (comp_name, variant_name) -> RecipeVariant
+    components_map = {}
+    variant_map = {}
     ingredients_list = await db.ingredients.find({}, {"_id": 0}).to_list(5000)
     ingredients_lookup = {i["name"].lower(): i for i in ingredients_list}
+    packaging_list = await db.packaging.find({}, {"_id": 0}).to_list(5000)
+    packaging_lookup = {p["name"].lower(): p for p in packaging_list}
     
     errors = []
     
@@ -1015,11 +1061,18 @@ async def import_component_recipes(file: UploadFile = File(...)):
             row_dict = {headers[i]: row[i] if i < len(row) else None for i in range(len(headers))}
             
             component_name = str(row_dict.get(name_col, "") or "").strip()
-            ingredient_name = str(row_dict.get("ingredient_name", "") or "").strip()
             variant_name = str(row_dict.get("variant_name", "Default") or "Default").strip() if has_variant else "Default"
             
             if not component_name or component_name.lower() == "none":
                 continue
+            
+            # Determine line_type and item_name
+            if has_line_type:
+                line_type = str(row_dict.get("line_type", "ingredient") or "ingredient").strip().lower()
+                item_name = str(row_dict.get("item_name", "") or "").strip()
+            else:
+                line_type = "ingredient"
+                item_name = str(row_dict.get("ingredient_name", "") or "").strip()
             
             if component_name not in components_map:
                 components_map[component_name] = ComponentRecipe(
@@ -1047,23 +1100,35 @@ async def import_component_recipes(file: UploadFile = File(...)):
             
             variant = variant_map[key]
             
-            if ingredient_name:
-                ingredient_key = ingredient_name.lower()
+            if not item_name:
+                continue
+            
+            if line_type == "ingredient":
+                ingredient_key = item_name.lower()
                 ingredient_id = ingredients_lookup.get(ingredient_key, {}).get("id", "")
-                
                 if not ingredient_id:
-                    new_ing = Ingredient(name=ingredient_name, default_unit=str(row_dict.get("unit", "g") or "g"))
+                    new_ing = Ingredient(name=item_name, default_unit=str(row_dict.get("unit", "g") or "g"))
                     await db.ingredients.insert_one(new_ing.model_dump())
                     ingredients_lookup[ingredient_key] = new_ing.model_dump()
                     ingredient_id = new_ing.id
                 
-                line_item = RecipeLineItem(
+                variant.ingredients.append(RecipeLineItem(
                     ingredient_id=ingredient_id,
-                    ingredient_name=ingredient_name,
+                    ingredient_name=item_name,
                     quantity=float(row_dict.get("quantity", 0) or 0),
                     unit=str(row_dict.get("unit", "g") or "g")
-                )
-                variant.ingredients.append(line_item)
+                ))
+            
+            elif line_type == "packaging":
+                pkg = packaging_lookup.get(item_name.lower())
+                if pkg:
+                    variant.packaging.append(PackagingLineItem(
+                        packaging_id=pkg["id"],
+                        packaging_name=item_name,
+                        quantity=float(row_dict.get("quantity", 1) or 1)
+                    ))
+                else:
+                    errors.append(f"Row {row_idx}: Packaging '{item_name}' not found")
                 
         except Exception as e:
             errors.append(f"Row {row_idx}: {str(e)}")

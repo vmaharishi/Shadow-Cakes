@@ -104,32 +104,52 @@ export default function ComponentsPage() {
       return;
     }
     
-    const headers = ["recipe_name", "variant_name", "ingredient_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "category", "notes"];
+    const headers = ["recipe_name", "variant_name", "line_type", "item_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "category", "notes"];
     const rows = [];
     
     components.forEach(comp => {
       if (comp.variants && comp.variants.length > 0) {
         comp.variants.forEach(variant => {
-          if (variant.ingredients && variant.ingredients.length > 0) {
-            variant.ingredients.forEach((ing, idx) => {
-              rows.push([
-                comp.name,
-                variant.name,
-                ing.ingredient_name,
-                ing.quantity,
-                ing.unit,
-                idx === 0 ? (variant.prep_time_minutes || 0) : "",
-                idx === 0 ? (variant.utility_time_minutes || 0) : "",
-                idx === 0 ? (comp.category || "") : "",
-                idx === 0 ? (comp.notes || "") : ""
-              ]);
-            });
-          } else {
-            rows.push([comp.name, variant.name, "", "", "", variant.prep_time_minutes || 0, variant.utility_time_minutes || 0, comp.category || "", comp.notes || ""]);
+          let isFirst = true;
+          
+          (variant.ingredients || []).forEach(ing => {
+            rows.push([
+              comp.name,
+              variant.name,
+              "ingredient",
+              ing.ingredient_name,
+              ing.quantity,
+              ing.unit,
+              isFirst ? (variant.prep_time_minutes || 0) : "",
+              isFirst ? (variant.utility_time_minutes || 0) : "",
+              isFirst ? (comp.category || "") : "",
+              isFirst ? (comp.notes || "") : ""
+            ]);
+            isFirst = false;
+          });
+          
+          (variant.packaging || []).forEach(pkg => {
+            rows.push([
+              comp.name,
+              variant.name,
+              "packaging",
+              pkg.packaging_name,
+              pkg.quantity,
+              "piece",
+              isFirst ? (variant.prep_time_minutes || 0) : "",
+              isFirst ? (variant.utility_time_minutes || 0) : "",
+              isFirst ? (comp.category || "") : "",
+              isFirst ? (comp.notes || "") : ""
+            ]);
+            isFirst = false;
+          });
+          
+          if (isFirst) {
+            rows.push([comp.name, variant.name, "", "", "", "", variant.prep_time_minutes || 0, variant.utility_time_minutes || 0, comp.category || "", comp.notes || ""]);
           }
         });
       } else {
-        rows.push([comp.name, "", "", "", "", "", "", comp.category || "", comp.notes || ""]);
+        rows.push([comp.name, "", "", "", "", "", "", "", comp.category || "", comp.notes || ""]);
       }
     });
     

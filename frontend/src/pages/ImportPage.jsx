@@ -319,7 +319,7 @@ export default function ImportPage() {
               disclaimer="Replaces all existing recipe data."
               endpoint="/import/recipes"
               icon={Cake}
-              columns={["recipe_name", "variant_name", "ingredient_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "category", "notes"]}
+              columns={["recipe_name", "variant_name", "line_type", "item_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "category", "notes"]}
               templateName="recipes"
             />
           </TabsContent>
@@ -343,7 +343,7 @@ export default function ImportPage() {
               disclaimer="Replaces all existing component data."
               endpoint="/import/components"
               icon={Flask}
-              columns={["recipe_name", "variant_name", "ingredient_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "category", "notes"]}
+              columns={["recipe_name", "variant_name", "line_type", "item_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "category", "notes"]}
               templateName="component_recipes"
             />
           </TabsContent>

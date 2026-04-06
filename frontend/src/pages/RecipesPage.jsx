@@ -104,30 +104,71 @@ export default function RecipesPage() {
     }
     
     // Match import format: recipe_name, variant_name, ingredient_name, quantity, unit, prep_time_minutes, utility_time_minutes, category, notes
-    const headers = ["recipe_name", "variant_name", "ingredient_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "category", "notes"];
+    const headers = ["recipe_name", "variant_name", "line_type", "item_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "category", "notes"];
     const rows = [];
     
     recipes.forEach(recipe => {
       if (recipe.variants && recipe.variants.length > 0) {
         recipe.variants.forEach(variant => {
-          if (variant.ingredients && variant.ingredients.length > 0) {
-            variant.ingredients.forEach((ing, idx) => {
-              rows.push([
-                recipe.name,
-                variant.name,
-                ing.ingredient_name,
-                ing.quantity,
-                ing.unit,
-                idx === 0 ? (variant.prep_time_minutes || 0) : "",
-                idx === 0 ? (variant.utility_time_minutes || 0) : "",
-                idx === 0 ? (recipe.category || "") : "",
-                idx === 0 ? (recipe.notes || "") : ""
-              ]);
-            });
-          } else {
+          let isFirst = true;
+          
+          // Ingredients
+          (variant.ingredients || []).forEach(ing => {
             rows.push([
               recipe.name,
               variant.name,
+              "ingredient",
+              ing.ingredient_name,
+              ing.quantity,
+              ing.unit,
+              isFirst ? (variant.prep_time_minutes || 0) : "",
+              isFirst ? (variant.utility_time_minutes || 0) : "",
+              isFirst ? (recipe.category || "") : "",
+              isFirst ? (recipe.notes || "") : ""
+            ]);
+            isFirst = false;
+          });
+          
+          // Packaging
+          (variant.packaging || []).forEach(pkg => {
+            rows.push([
+              recipe.name,
+              variant.name,
+              "packaging",
+              pkg.packaging_name,
+              pkg.quantity,
+              "piece",
+              isFirst ? (variant.prep_time_minutes || 0) : "",
+              isFirst ? (variant.utility_time_minutes || 0) : "",
+              isFirst ? (recipe.category || "") : "",
+              isFirst ? (recipe.notes || "") : ""
+            ]);
+            isFirst = false;
+          });
+          
+          // Components
+          (variant.components || []).forEach(comp => {
+            rows.push([
+              recipe.name,
+              variant.name,
+              "component",
+              comp.component_name,
+              1,
+              "batch",
+              isFirst ? (variant.prep_time_minutes || 0) : "",
+              isFirst ? (variant.utility_time_minutes || 0) : "",
+              isFirst ? (recipe.category || "") : "",
+              isFirst ? (recipe.notes || "") : ""
+            ]);
+            isFirst = false;
+          });
+          
+          // Empty variant (no items at all)
+          if (isFirst) {
+            rows.push([
+              recipe.name,
+              variant.name,
+              "",
               "",
               "",
               "",
@@ -139,17 +180,7 @@ export default function RecipesPage() {
           }
         });
       } else {
-        rows.push([
-          recipe.name,
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          recipe.category || "",
-          recipe.notes || ""
-        ]);
+        rows.push([recipe.name, "", "", "", "", "", "", "", recipe.category || "", recipe.notes || ""]);
       }
     });
     
