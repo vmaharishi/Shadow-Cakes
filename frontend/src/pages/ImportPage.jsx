@@ -256,19 +256,6 @@ export default function ImportPage() {
       </header>
       
       <div className="p-8">
-        <div className="card-flat p-4 mb-6 bg-[#D99441]/10 border-[#D99441]/20">
-          <div className="flex items-start gap-3">
-            <Warning className="w-5 h-5 text-[#D99441] flex-shrink-0 mt-0.5" weight="fill" />
-            <div className="text-sm">
-              <p className="font-medium text-[#D99441]">Replace Behavior</p>
-              <p className="text-[#5C554D]">
-                Each import will <strong>replace</strong> the entire dataset for that category. 
-                Existing data will be removed and replaced with the imported data.
-              </p>
-            </div>
-          </div>
-        </div>
-        
         <Tabs defaultValue="ingredients" className="space-y-6">
           <TabsList className="bg-[#F4F1EA] p-1 rounded-lg">
             <TabsTrigger 
@@ -317,6 +304,7 @@ export default function ImportPage() {
             <ImportSection
               title="Import Ingredient Pricing"
               description="Upload your ingredient pricing spreadsheet. This will create ingredients and their vendor prices."
+              disclaimer="Replaces all existing ingredient data."
               endpoint="/import/ingredients"
               icon={Carrot}
               columns={["ingredient_name", "store_vendor", "purchase_price", "package_size", "unit", "purchase_date", "brand"]}
@@ -328,6 +316,7 @@ export default function ImportPage() {
             <ImportSection
               title="Import Recipes"
               description="Upload your recipes spreadsheet. Each row represents an ingredient in a recipe variant."
+              disclaimer="Replaces all existing recipe data."
               endpoint="/import/recipes"
               icon={Cake}
               columns={["recipe_name", "variant_name", "ingredient_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "category", "notes"]}
@@ -338,7 +327,8 @@ export default function ImportPage() {
           <TabsContent value="packaging">
             <ImportSection
               title="Import Packaging"
-              description="Upload your packaging items spreadsheet. Same format as ingredients - unit cost is calculated from purchase_price / package_size."
+              description="Upload your packaging items spreadsheet. Unit cost is calculated from purchase_price / package_size."
+              disclaimer="Replaces all existing packaging data."
               endpoint="/import/packaging"
               icon={Package}
               columns={["packaging_name", "store_vendor", "purchase_price", "package_size", "unit", "purchase_date", "notes"]}
@@ -350,6 +340,7 @@ export default function ImportPage() {
             <ImportSection
               title="Import Component Recipes"
               description="Upload your component recipes (frostings, ganaches, fillings, etc.)."
+              disclaimer="Replaces all existing component data."
               endpoint="/import/components"
               icon={Flask}
               columns={["component_name", "variant_name", "batch_yield_grams", "ingredient_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "notes"]}
