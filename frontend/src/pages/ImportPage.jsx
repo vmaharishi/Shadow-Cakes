@@ -343,7 +343,7 @@ export default function ImportPage() {
               disclaimer="Replaces all existing component data."
               endpoint="/import/components"
               icon={Flask}
-              columns={["component_name", "variant_name", "batch_yield_grams", "ingredient_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "notes"]}
+              columns={["recipe_name", "variant_name", "ingredient_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "category", "notes", "batch_yield_grams"]}
               templateName="component_recipes"
             />
           </TabsContent>
