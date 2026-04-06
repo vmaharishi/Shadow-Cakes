@@ -9,7 +9,6 @@ import {
   CurrencyDollar,
   Percent,
   Carrot,
-  Package,
   Flask,
   Lightning,
   Warning,
@@ -32,7 +31,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -52,11 +50,9 @@ export default function ComponentDetailPage() {
   const [packagingList, setPackagingList] = useState([]);
   
   const [addIngredientOpen, setAddIngredientOpen] = useState(false);
-  const [addPackagingOpen, setAddPackagingOpen] = useState(false);
   const [addVariantOpen, setAddVariantOpen] = useState(false);
   
   const [newIngredient, setNewIngredient] = useState({ ingredient_id: "", quantity: "", unit: "g" });
-  const [newPackaging, setNewPackaging] = useState({ packaging_id: "", quantity: 1 });
   const [newVariant, setNewVariant] = useState({ name: "", prep_time_minutes: 0, utility_time_minutes: 0 });
   const [editingPrepTime, setEditingPrepTime] = useState(false);
   const [tempPrepTime, setTempPrepTime] = useState(0);
@@ -162,41 +158,6 @@ export default function ComponentDetailPage() {
     const updatedVariants = component.variants.map(v => {
       if (v.id === selectedVariantId) {
         return { ...v, ingredients: v.ingredients.filter(i => i.id !== ingredientLineId) };
-      }
-      return v;
-    });
-    await handleSaveComponent({ ...component, variants: updatedVariants });
-  };
-
-  const handleAddPackaging = async () => {
-    if (!newPackaging.packaging_id) {
-      toast.error("Please select a packaging item");
-      return;
-    }
-    const pkg = packagingList.find(p => p.id === newPackaging.packaging_id);
-    const updatedVariants = component.variants.map(v => {
-      if (v.id === selectedVariantId) {
-        return {
-          ...v,
-          packaging: [...v.packaging, {
-            id: crypto.randomUUID(),
-            packaging_id: newPackaging.packaging_id,
-            packaging_name: pkg?.name || "",
-            quantity: parseFloat(newPackaging.quantity) || 1
-          }]
-        };
-      }
-      return v;
-    });
-    await handleSaveComponent({ ...component, variants: updatedVariants });
-    setNewPackaging({ packaging_id: "", quantity: 1 });
-    setAddPackagingOpen(false);
-  };
-
-  const handleRemovePackaging = async (packagingLineId) => {
-    const updatedVariants = component.variants.map(v => {
-      if (v.id === selectedVariantId) {
-        return { ...v, packaging: v.packaging.filter(p => p.id !== packagingLineId) };
       }
       return v;
     });
@@ -428,21 +389,13 @@ export default function ComponentDetailPage() {
                   </div>
                 </div>
 
-                {/* Ingredients & Packaging Tabs */}
-                <Tabs defaultValue="ingredients" className="card-flat overflow-hidden">
-                  <TabsList className="w-full bg-[#F4F1EA] rounded-none p-1">
-                    <TabsTrigger value="ingredients" className="flex-1 data-[state=active]:bg-white rounded-md" data-testid="tab-ingredients">
-                      <Carrot className="w-4 h-4 mr-2" />
-                      Ingredients ({selectedVariant.ingredients?.length || 0})
-                    </TabsTrigger>
-                    <TabsTrigger value="packaging" className="flex-1 data-[state=active]:bg-white rounded-md" data-testid="tab-packaging">
-                      <Package className="w-4 h-4 mr-2" />
-                      Packaging ({selectedVariant.packaging?.length || 0})
-                    </TabsTrigger>
-                  </TabsList>
-                  
-                  {/* Ingredients Tab */}
-                  <TabsContent value="ingredients" className="p-4">
+                {/* Ingredients */}
+                <div className="card-flat overflow-hidden">
+                  <div className="bg-[#F4F1EA] p-3 flex items-center gap-2">
+                    <Carrot className="w-4 h-4" />
+                    <span className="text-sm font-medium">Ingredients ({selectedVariant.ingredients?.length || 0})</span>
+                  </div>
+                  <div className="p-4">
                     <div className="flex justify-end mb-4">
                       <Dialog open={addIngredientOpen} onOpenChange={setAddIngredientOpen}>
                         <DialogTrigger asChild>
@@ -550,76 +503,8 @@ export default function ComponentDetailPage() {
                         </tbody>
                       </table>
                     )}
-                  </TabsContent>
-                  
-                  {/* Packaging Tab */}
-                  <TabsContent value="packaging" className="p-4">
-                    <div className="flex justify-end mb-4">
-                      <Dialog open={addPackagingOpen} onOpenChange={setAddPackagingOpen}>
-                        <DialogTrigger asChild>
-                          <Button size="sm" className="bg-[#2C1E16] hover:bg-[#3E2A1F]" data-testid="add-packaging-btn">
-                            <Plus className="w-4 h-4 mr-1" />
-                            Add Packaging
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="bg-white border-[#E8E3D9]">
-                          <DialogHeader>
-                            <DialogTitle className="font-outfit">Add Packaging</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4 mt-4">
-                            <div>
-                              <label className="form-label">Packaging Item *</label>
-                              <Select value={newPackaging.packaging_id} onValueChange={(v) => setNewPackaging({ ...newPackaging, packaging_id: v })}>
-                                <SelectTrigger className="form-input" data-testid="select-packaging">
-                                  <SelectValue placeholder="Select packaging" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-white border-[#E8E3D9]">
-                                  {packagingList.map((pkg) => (
-                                    <SelectItem key={pkg.id} value={pkg.id}>{pkg.name} (${pkg.unit_cost})</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <label className="form-label">Quantity</label>
-                              <Input type="number" value={newPackaging.quantity} onChange={(e) => setNewPackaging({ ...newPackaging, quantity: e.target.value })} className="form-input" data-testid="packaging-quantity" />
-                            </div>
-                            <Button onClick={handleAddPackaging} className="w-full bg-[#2C1E16] hover:bg-[#3E2A1F]" data-testid="confirm-add-packaging">
-                              Add Packaging
-                            </Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                    
-                    {selectedVariant.packaging?.length === 0 ? (
-                      <p className="text-center py-8 text-[#5C554D]">No packaging added yet</p>
-                    ) : (
-                      <table className="w-full">
-                        <thead>
-                          <tr>
-                            <th className="table-header-cell">Item</th>
-                            <th className="table-header-cell text-right">Qty</th>
-                            <th className="table-header-cell w-12"></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {selectedVariant.packaging?.map((item) => (
-                            <tr key={item.id} className="table-row">
-                              <td className="table-cell font-medium">{item.packaging_name}</td>
-                              <td className="table-cell-numeric">{item.quantity}</td>
-                              <td className="table-cell">
-                                <button onClick={() => handleRemovePackaging(item.id)} className="p-1 hover:bg-[#A63C3C]/10 rounded text-[#A63C3C]" data-testid={`remove-packaging-${item.id}`}>
-                                  <Trash className="w-4 h-4" />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </TabsContent>
-                </Tabs>
+                  </div>
+                </div>
               </>
             )}
           </div>
@@ -643,12 +528,6 @@ export default function ComponentDetailPage() {
                           {item.store_vendor}{item.brand ? ` - ${item.brand}` : ''}
                         </span>
                       </div>
-                      <span className="font-mono">${item.cost.toFixed(2)}</span>
-                    </div>
-                  ))}
-                  {costBreakdown.breakdown.packaging_costs.map((item, idx) => (
-                    <div key={`pkg-${idx}`} className="cost-line text-sm">
-                      <span>{item.packaging_name} x{item.quantity}</span>
                       <span className="font-mono">${item.cost.toFixed(2)}</span>
                     </div>
                   ))}
