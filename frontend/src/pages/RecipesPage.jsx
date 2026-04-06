@@ -103,8 +103,8 @@ export default function RecipesPage() {
       return;
     }
     
-    // Match import format: recipe_name, variant_name, ingredient_name, quantity, unit, prep_time_minutes, category, notes
-    const headers = ["recipe_name", "variant_name", "ingredient_name", "quantity", "unit", "prep_time_minutes", "category", "notes"];
+    // Match import format: recipe_name, variant_name, ingredient_name, quantity, unit, prep_time_minutes, utility_time_minutes, category, notes
+    const headers = ["recipe_name", "variant_name", "ingredient_name", "quantity", "unit", "prep_time_minutes", "utility_time_minutes", "category", "notes"];
     const rows = [];
     
     recipes.forEach(recipe => {
@@ -119,6 +119,7 @@ export default function RecipesPage() {
                 ing.quantity,
                 ing.unit,
                 idx === 0 ? (variant.prep_time_minutes || 0) : "",
+                idx === 0 ? (variant.utility_time_minutes || 0) : "",
                 idx === 0 ? (recipe.category || "") : "",
                 idx === 0 ? (recipe.notes || "") : ""
               ]);
@@ -131,6 +132,7 @@ export default function RecipesPage() {
               "",
               "",
               variant.prep_time_minutes || 0,
+              variant.utility_time_minutes || 0,
               recipe.category || "",
               recipe.notes || ""
             ]);
@@ -139,6 +141,7 @@ export default function RecipesPage() {
       } else {
         rows.push([
           recipe.name,
+          "",
           "",
           "",
           "",
