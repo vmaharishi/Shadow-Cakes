@@ -44,6 +44,22 @@ import { toast } from "sonner";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Parse a date string in MM/DD/YYYY or YYYY-MM-DD format
+function parseDate(str) {
+  if (!str) return null;
+  // MM/DD/YYYY
+  const mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) return new Date(+mdy[3], +mdy[1] - 1, +mdy[2]);
+  // YYYY-MM-DD
+  return new Date(str + "T00:00:00");
+}
+
+function formatDateMMDDYYYY(str) {
+  const d = parseDate(str);
+  if (!d || isNaN(d)) return str || "";
+  return d.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
+}
+
 export default function Dashboard() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);

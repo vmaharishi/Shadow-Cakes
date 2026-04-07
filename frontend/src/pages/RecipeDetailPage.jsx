@@ -77,7 +77,7 @@ export default function RecipeDetailPage() {
   // Sale recording state
   const [saleDialogOpen, setSaleDialogOpen] = useState(false);
   const [newSale, setNewSale] = useState({
-    sale_date: new Date().toISOString().split('T')[0],
+    sale_date: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
     customer_name: "",
     notes: ""
   });
@@ -381,7 +381,7 @@ export default function RecipeDetailPage() {
       toast.success("Sale recorded successfully!");
       setSaleDialogOpen(false);
       setNewSale({
-        sale_date: new Date().toISOString().split('T')[0],
+        sale_date: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
         customer_name: "",
         notes: ""
       });
