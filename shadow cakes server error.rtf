@@ -1,0 +1,1784 @@
+## The Database Error — What Happened & How to Fix It
+
+**Error seen in server terminal:**
+```
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused
+```
+
+**Plain English:** The backend server started fine, but when the frontend asked for `/api/sales` and `/api/recipes`, the backend tried to connect to MongoDB and found nothing listening on port 27017 — because **MongoDB was not running**.
+
+**The fix:** Start MongoDB before starting the backend (see step 1 above).
+
+The server code itself has no bug. Every 500 error in that log has the same single root cause: MongoDB was off.
+
+**To confirm MongoDB is running on Mac:**
+```bash
+brew services list | grep mongodb
+```
+It should say `started`. If it says `stopped`, run `brew services start mongodb-community`.
+
+---
+
+## Verification
+
+After starting all three (MongoDB → backend → frontend):
+1. Open `http://localhost:3000` — the Dashboard should load with sales data
+2. Open `http://localhost:8002/docs` — Swagger API docs should appear
+3. No 500 errors should appear in the backend terminal
+
+Traceback:
+{\rtf1\ansi\ansicpg1252\cocoartf2869
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 Menlo-Regular;\f1\fnil\fcharset0 Menlo-Bold;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red47\green180\blue29;\red46\green174\blue187;
+\red252\green33\blue24;\red180\green36\blue25;}
+{\*\expandedcolortbl;;\csgray\c0;\cssrgb\c20241\c73898\c14950;\cssrgb\c20199\c73241\c78251;
+\cssrgb\c100000\c23177\c11603;\cssrgb\c76411\c21697\c12527;}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f0\fs22 \cf2 \CocoaLigature0 Last login: Sun Jun 21 15:11:34 on ttys000\
+cd "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend" && source venv/bin/activate && uvicorn server:app --host 0.0.0.0 --port 8002 --reload\
+arizadivecha@Arizas-MacBook-Air ~ % cd "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend" && source venv/bin/activate && uvicorn server:app --host 0.0.0.0 --port 8002 --reload\
+\cf3 INFO\cf2 :     Will watch for changes in these directories: ["/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend"]\
+\cf3 INFO\cf2 :     Uvicorn running on 
+\f1\b http://0.0.0.0:8002
+\f0\b0  (Press CTRL+C to quit)\
+\cf3 INFO\cf2 :     Started reloader process [
+\f1\b \cf4 12304
+\f0\b0 \cf2 ] using 
+\f1\b \cf4 WatchFiles
+\f0\b0 \cf2 \
+\cf3 INFO\cf2 :     Started server process [\cf4 12314\cf2 ]\
+\cf3 INFO\cf2 :     Waiting for application startup.\
+\cf3 INFO\cf2 :     Application startup complete.\
+\cf3 INFO\cf2 :     127.0.0.1:50663 - "
+\f1\b GET /api/sales HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 900, in get_sales\
+    docs = await db.sales.find(\{\}, \{"_id": 0\}).sort("sale_date", -1).to_list(5000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50717 - "
+\f1\b GET /api/recipes HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 442, in get_recipes\
+    docs = await db.recipes.find(\{\}, \{"_id": 0\}).to_list(1000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50723 - "
+\f1\b GET /api/sales HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 900, in get_sales\
+    docs = await db.sales.find(\{\}, \{"_id": 0\}).sort("sale_date", -1).to_list(5000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50751 - "
+\f1\b GET /api/sales HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 900, in get_sales\
+    docs = await db.sales.find(\{\}, \{"_id": 0\}).sort("sale_date", -1).to_list(5000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50753 - "
+\f1\b GET /api/sales HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 900, in get_sales\
+    docs = await db.sales.find(\{\}, \{"_id": 0\}).sort("sale_date", -1).to_list(5000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50771 - "
+\f1\b GET /api/recipes HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 442, in get_recipes\
+    docs = await db.recipes.find(\{\}, \{"_id": 0\}).to_list(1000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50817 - "
+\f1\b GET /api/sales HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 900, in get_sales\
+    docs = await db.sales.find(\{\}, \{"_id": 0\}).sort("sale_date", -1).to_list(5000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50833 - "
+\f1\b GET /api/recipes HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 442, in get_recipes\
+    docs = await db.recipes.find(\{\}, \{"_id": 0\}).to_list(1000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50868 - "
+\f1\b GET /api/sales HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 900, in get_sales\
+    docs = await db.sales.find(\{\}, \{"_id": 0\}).sort("sale_date", -1).to_list(5000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50878 - "
+\f1\b GET /api/ingredients HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 302, in get_ingredients\
+    docs = await db.ingredients.find(\{\}, \{"_id": 0\}).to_list(1000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50879 - "
+\f1\b GET /api/ingredient-prices HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 332, in get_ingredient_prices\
+    docs = await db.ingredient_prices.find(\{\}, \{"_id": 0\}).to_list(5000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50883 - "
+\f1\b GET /api/packaging HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 375, in get_packaging\
+    docs = await db.packaging.find(\{\}, \{"_id": 0\}).to_list(1000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50893 - "
+\f1\b GET /api/recipes HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 442, in get_recipes\
+    docs = await db.recipes.find(\{\}, \{"_id": 0\}).to_list(1000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50909 - "
+\f1\b GET /api/recipes HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 442, in get_recipes\
+    docs = await db.recipes.find(\{\}, \{"_id": 0\}).to_list(1000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50940 - "
+\f1\b GET /api/sales HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 900, in get_sales\
+    docs = await db.sales.find(\{\}, \{"_id": 0\}).sort("sale_date", -1).to_list(5000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50951 - "
+\f1\b GET /api/packaging HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 375, in get_packaging\
+    docs = await db.packaging.find(\{\}, \{"_id": 0\}).to_list(1000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50952 - "
+\f1\b GET /api/sales HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 900, in get_sales\
+    docs = await db.sales.find(\{\}, \{"_id": 0\}).sort("sale_date", -1).to_list(5000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50955 - "
+\f1\b GET /api/sales HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 900, in get_sales\
+    docs = await db.sales.find(\{\}, \{"_id": 0\}).sort("sale_date", -1).to_list(5000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\cf3 INFO\cf2 :     127.0.0.1:50965 - "
+\f1\b GET /api/ingredients HTTP/1.1
+\f0\b0 " \cf5 500 Internal Server Error\cf2 \
+\cf6 ERROR\cf2 :    Exception in ASGI application\
+Traceback (most recent call last):\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/protocols/http/h11_impl.py", line 408, in run_asgi\
+    result = await app(  # type: ignore[func-returns-value]\
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        self.scope, self.receive, self.send\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/uvicorn/middleware/proxy_headers.py", line 84, in __call__\
+    return await self.app(scope, receive, send)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/applications.py", line 1054, in __call__\
+    await super().__call__(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/applications.py", line 123, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 186, in __call__\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/errors.py", line 164, in __call__\
+    await self.app(scope, receive, _send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 93, in __call__\
+    await self.simple_response(scope, receive, send, request_headers=headers)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/cors.py", line 148, in simple_response\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/middleware/exceptions.py", line 65, in __call__\
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 756, in __call__\
+    await self.middleware_stack(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 776, in app\
+    await route.handle(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 297, in handle\
+    await self.app(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 77, in app\
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 64, in wrapped_app\
+    raise exc\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app\
+    await app(scope, receive, sender)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/starlette/routing.py", line 72, in app\
+    response = await func(request)\
+               ^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 278, in app\
+    raw_response = await run_endpoint_function(\
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+        dependant=dependant, values=values, is_coroutine=is_coroutine\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/fastapi/routing.py", line 191, in run_endpoint_function\
+    return await dependant.call(**values)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/server.py", line 302, in get_ingredients\
+    docs = await db.ingredients.find(\{\}, \{"_id": 0\}).to_list(1000)\
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/motor/core.py", line 1657, in _to_list\
+    result = get_more_result.result()\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run\
+    result = ctx.run(self.task)\
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run\
+    return fn(*args, **kwargs)\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/cursor.py", line 1153, in _refresh\
+    self.__session = self.__collection.database.client._ensure_session()\
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1868, in _ensure_session\
+    return self.__start_session(True, causal_consistency=False)\
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/mongo_client.py", line 1811, in __start_session\
+    self._topology._check_implicit_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 583, in _check_implicit_session_support\
+    self._check_session_support()\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 599, in _check_session_support\
+    self._select_servers_loop(\
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^\
+        readable_server_selector, self.get_server_selection_timeout(), None\
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\
+    )\
+    ^\
+  File "/Users/arizadivecha/Documents/Varun's Project/Shadow-Cakes-3/backend/venv/lib/python3.14/site-packages/pymongo/topology.py", line 269, in _select_servers_loop\
+    raise ServerSelectionTimeoutError(\
+        f"\{self._error_message(selector)\}, Timeout: \{timeout\}s, Topology Description: \{self.description!r\}"\
+    )\
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 61] Connection refused, Timeout: 30s, Topology Description: <TopologyDescription id: 6a38376ba7bef0bf428c2f52, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('localhost:27017: [Errno 61] Connection refused')>]>\
+\
+}
