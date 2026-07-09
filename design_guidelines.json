@@ -1,0 +1,110 @@
+{
+  "theme": "light",
+  "archetype": "1 - Organic & Earthy",
+  "branding": {
+    "name": "Shadow Cakes",
+    "vibe": "Clean, Professional Bakery, Earthy, Reliable, Warm",
+    "description": "A single-user, database-backed recipe costing app for personal use."
+  },
+  "colors": {
+    "background": "#FDFBF7",
+    "surface": "#FFFFFF",
+    "surface_secondary": "#F4F1EA",
+    "primary": "#2C1E16",
+    "primary_hover": "#3E2A1F",
+    "secondary": "#C57B57",
+    "text_main": "#1A1A1A",
+    "text_muted": "#5C554D",
+    "border": "#E8E3D9",
+    "success": "#4A6B53",
+    "warning": "#D99441",
+    "danger": "#A63C3C",
+    "chart_palettes": ["#2C1E16", "#C57B57", "#4A6B53", "#D99441", "#8C837B"]
+  },
+  "typography": {
+    "font_family": {
+      "heading": "Outfit, sans-serif",
+      "body": "Manrope, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "rules": {
+      "h1": "text-4xl sm:text-5xl font-light tracking-tight text-[#1A1A1A]",
+      "h2": "text-2xl sm:text-3xl font-medium tracking-tight text-[#1A1A1A]",
+      "h3": "text-xl sm:text-2xl font-medium tracking-tight",
+      "h4": "text-lg sm:text-xl font-medium text-[#2C1E16]",
+      "body": "text-base leading-relaxed text-[#1A1A1A]",
+      "small_labels": "text-xs font-bold uppercase tracking-[0.2em] text-[#5C554D]",
+      "data_currency": "font-mono text-sm tracking-tight text-[#2C1E16]"
+    }
+  },
+  "layout_and_spacing": {
+    "strategy": "Control Room Grid (Dense but breathable)",
+    "container": "mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8",
+    "bento_grid": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6",
+    "card_padding": "p-6",
+    "table_cell_padding": "px-4 py-3",
+    "surface_treatment": "Cardless or Flat Solid. 1px solid border (#E8E3D9), rounded-lg (8px max). No soft drop shadows. Elegant and structural."
+  },
+  "components": {
+    "navigation": {
+      "style": "Vertical Sidebar or Sticky Top Nav with Crystal Glass or Solid #FDFBF7 background. 1px bottom/right border.",
+      "active_state": "bg-[#F4F1EA] text-[#2C1E16] font-medium rounded-md"
+    },
+    "buttons": {
+      "primary": "bg-[#2C1E16] text-white hover:bg-[#3E2A1F] rounded-md px-4 py-2 transition-colors",
+      "secondary": "bg-transparent border border-[#E8E3D9] text-[#2C1E16] hover:bg-[#F4F1EA] rounded-md px-4 py-2 transition-colors",
+      "ghost": "bg-transparent text-[#5C554D] hover:text-[#2C1E16] hover:bg-[#F4F1EA] px-3 py-1 rounded-md"
+    },
+    "tables": {
+      "header": "bg-[#F4F1EA] text-xs font-bold uppercase tracking-[0.1em] text-[#5C554D] text-left",
+      "row": "border-b border-[#E8E3D9] hover:bg-[#FDFBF7] transition-colors",
+      "numeric_cell": "text-right font-mono text-sm"
+    },
+    "forms": {
+      "input": "bg-[#FFFFFF] border border-[#E8E3D9] rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#C57B57]/20 focus:border-[#C57B57] transition-all outline-none",
+      "label": "block text-xs font-bold uppercase tracking-[0.05em] text-[#5C554D] mb-1.5"
+    },
+    "badges": {
+      "override": "bg-[#D99441]/10 text-[#D99441] border border-[#D99441]/20 rounded-full px-2 py-0.5 text-xs font-medium",
+      "margin_good": "bg-[#4A6B53]/10 text-[#4A6B53] rounded-full px-2 py-0.5 text-xs font-medium font-mono"
+    }
+  },
+  "motion": {
+    "hover_states": "All interactive elements must have explicit hover states (background color shift, text color shift).",
+    "transitions": "transition-all duration-200 ease-in-out",
+    "page_load": "Subtle fade-in and slide-up (translate-y-2 to 0) for bento grid cards."
+  },
+  "media": {
+    "icon_library": "@phosphor-icons/react",
+    "images": [
+      {
+        "category": "auth_or_hero_background",
+        "url": "https://images.unsplash.com/photo-1640764203385-dad8cc5b702f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MDV8MHwxfHNlYXJjaHwyfHxtaW5pbWFsaXN0JTIwZWxlZ2FudCUyMGNha2V8ZW58MHx8fHwxNzc0ODA3OTUzfDA&ixlib=rb-4.1.0&q=85",
+        "description": "Minimalist elegant white cake"
+      },
+      {
+        "category": "empty_state_ingredients",
+        "url": "https://images.unsplash.com/photo-1772915516745-3da7cb6b7e52?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxNzV8MHwxfHNlYXJjaHwxfHxiYWtpbmclMjBpbmdyZWRpZW50cyUyMHRvcCUyMGRvd258ZW58MHx8fHwxNzc0ODA3OTU0fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Hand sifting flour into a bowl, earthy warm tone"
+      },
+      {
+        "category": "empty_state_recipes",
+        "url": "https://images.unsplash.com/photo-1589317169431-124b2fd668e3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxNzV8MHwxfHNlYXJjaHwyfHxiYWtpbmclMjBpbmdyZWRpZW50cyUyMHRvcCUyMGRvd258ZW58MHx8fHwxNzc0ODA3OTU0fDA&ixlib=rb-4.1.0&q=85",
+        "description": "White dough on brown wooden chopping board"
+      }
+    ]
+  },
+  "testing": {
+    "rule": "All interactive and key informational elements MUST include a data-testid attribute in kebab-case."
+  },
+  "instructions_to_main_agent": [
+    "Install and use @phosphor-icons/react for all iconography. Use Duotone or Regular weights to match the elegant bakery vibe.",
+    "Use Shadcn UI components for Tables, Dialogs, Selects, and Tabs. Customize them heavily to remove the default Vercel look (apply flat #FFFFFF backgrounds, 1px #E8E3D9 borders, rounded-md, no shadows).",
+    "For the Cost Breakdown Panel and Margin Calculator, use JetBrains Mono for all numeric values and right-align the columns. Highlight positive margins in the success color (#4A6B53) and negative margins in danger (#A63C3C).",
+    "For Excel imports, build a clean, Drag & Drop dashed-border area with the 'text_muted' color.",
+    "Vendor/Store overrides should be visually distinct. Use the 'warning' badge style to indicate when an ingredient line is using an overridden price.",
+    "Do not use generic blue/indigo focus rings. Use focus:ring-[#C57B57]/20 focus:border-[#C57B57] for all form inputs.",
+    "Do not use placeholder image URLs. If an empty state needs an image, use the provided Unsplash URLs in the media section.",
+    "The app should feel like a premium, warm, 'organic' software tool for an artisan baker, not a sterile IT dashboard."
+  ]
+}
