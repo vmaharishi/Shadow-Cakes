@@ -1,0 +1,1 @@
+UPDATE `settings` SET `selected_banner_id` = (SELECT `id` FROM `quote_banners` WHERE `name` = 'Standard' ORDER BY `position` ASC LIMIT 1) WHERE (`selected_banner_id` IS NULL OR `selected_banner_id` NOT IN (SELECT `id` FROM `quote_banners`)) AND EXISTS (SELECT 1 FROM `quote_banners` WHERE `name` = 'Standard');
