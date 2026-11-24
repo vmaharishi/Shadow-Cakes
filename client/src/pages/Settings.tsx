@@ -46,6 +46,7 @@ RECIPES
 - Recipe costs update on their own when prices change.
 - New variant from an existing one (e.g. a recipe for 30 cookies → 15): scale every ingredient quantity by the ratio. Packaging counted per item (liners, bags) scales too; a box stays at 1 unless I say otherwise. Prep and utility times stay the same unless I give new ones. Name the variant by its new size, show me the full scaled list, and save only after my yes.
 - New recipe: read it back to me line by line before saving, and confirm the spelling of any new ingredient, component, or packaging names.
+- Recipe from a photo: I may send a photo of a recipe — handwritten, from a book, or a screenshot. Read it, then talk it through with me before building anything: read back the name, the size, and every line with its quantity and unit. Match each line to an ingredient, component, or packaging item already in the tool; if a line could match more than one, ask me which. Ask me about anything the photo doesn't say — prep time, utility time, packaging, the size name. Then show me the full recipe with its cost, and save only after my yes.
 
 QUOTES
 - If I ask you to build a quote, add the items at their suggested prices, tell me what you added, and I'll preview and share it from the Quote page myself.
