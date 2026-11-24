@@ -230,6 +230,24 @@ export const quoteBanners = sqliteTable("quote_banners", {
   createdAt: text("created_at").notNull(),
 });
 
+// Feedback mailbox (plumbing only — no UI anywhere reads or writes it).
+// Her Muse compiles feedback she mentions while using the tool and logs
+// it here via the logfeedback action; entries are read on demand later
+// with listfeedback. `date` is the calendar date the feedback refers to
+// (defaults to the day it was logged); createdAt orders the mailbox.
+// Entries start "open"; resolvefeedback flips them to "resolved" once
+// actioned — they stay in the table as history and are never deleted.
+export const feedback = sqliteTable("feedback", {
+  id: text("id").primaryKey(),
+  text: text("text").notNull(),
+  area: text("area"),
+  date: text("date").notNull(),
+  status: text("status", { enum: ["open", "resolved"] })
+    .notNull()
+    .default("open"),
+  createdAt: text("created_at").notNull(),
+});
+
 // Dated cost snapshots for recipe variants. A row is written whenever a
 // price, packaging cost, component, rate, or recipe change moves a
 // variant's computed total cost (checked server-side after each relevant

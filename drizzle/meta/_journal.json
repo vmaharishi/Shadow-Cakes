@@ -99,6 +99,13 @@
       "when": 1795484096924,
       "tag": "0014_add_sale_type_mark_farmers_market_events",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1795526879745,
+      "tag": "0015_add_feedback_table",
+      "breakpoints": true
     }
   ]
 }

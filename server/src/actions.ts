@@ -30,7 +30,22 @@ type Db = ReturnType<typeof getDb>;
 
 const uid = () => crypto.randomUUID();
 const nowIso = () => new Date().toISOString();
-const todayStr = () => new Date().toISOString().split("T")[0] ?? "";
+// "Today" for server-side defaults (a feedback entry's date, an
+// import's fallback date, a packaging purchase date). The server runs
+// in UTC, so a bare toISOString() date is already tomorrow during
+// Toronto evenings — the bakery's day is America/Toronto, so compute
+// the date there explicitly.
+const todayStr = (): string => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Toronto",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const pick = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  return `${pick("year")}-${pick("month")}-${pick("day")}`;
+};
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const round4 = (n: number) => Math.round(n * 10000) / 10000;
 
@@ -4381,6 +4396,117 @@ export const Actions = {
       }
       ctx.invalidateQueries();
       return { mode: args.mode, applied: true, datasets: summaries };
+    },
+  }),
+
+  // ---------- feedback mailbox (plumbing only; no UI uses these) ----------
+  logfeedback: defineAction({
+    description:
+      "Logs one feedback entry about using the tool into the feedback mailbox: the feedback text (required), an optional area tag (e.g. Dashboard, Sales, Ingredients, Quote, Recipes, Packaging, General), and the date (YYYY-MM-DD; defaults to today). Entries are only stored, never acted on.",
+    request: z.object({
+      text: z.string().trim().min(1).max(4000),
+      area: z.string().trim().max(100).optional(),
+      date: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD")
+        .optional(),
+    }),
+    response: z.object({ ok: z.literal(true), id: z.string() }),
+    async handler(ctx, args): Promise<{ ok: true; id: string }> {
+      const db = ctx.db<typeof schema>();
+      const id = uid();
+      await db.insert(schema.feedback).values({
+        id,
+        text: args.text,
+        area: args.area ?? null,
+        date: args.date ?? todayStr(),
+        status: "open",
+        createdAt: nowIso(),
+      });
+      return { ok: true, id };
+    },
+  }),
+
+  listfeedback: defineAction({
+    description:
+      "Returns feedback entries from the mailbox grouped by the date they were given, newest date first (newest entry first within each date), for on-demand reading. Each entry carries its full created_at timestamp so the exact date and time it was given is visible. By default only open entries are returned; pass include_resolved to also see resolved ones. Reading never changes an entry's status.",
+    request: z.object({
+      include_resolved: z.boolean().optional(),
+    }),
+    response: z.object({
+      groups: z.array(
+        z.object({
+          date: z.string(),
+          entries: z.array(
+            z.object({
+              id: z.string(),
+              text: z.string(),
+              area: z.string().nullable(),
+              date: z.string(),
+              status: z.enum(["open", "resolved"]),
+              created_at: z.string(),
+            }),
+          ),
+        }),
+      ),
+    }),
+    async handler(ctx, args) {
+      const db = ctx.db<typeof schema>();
+      const base = db.select().from(schema.feedback);
+      const rows = args.include_resolved
+        ? await base.orderBy(desc(schema.feedback.createdAt))
+        : await base
+            .where(eq(schema.feedback.status, "open"))
+            .orderBy(desc(schema.feedback.createdAt));
+      // Rows arrive newest first; bucket them by their date, keeping
+      // that order, so the timeline of when feedback was given reads
+      // at a glance.
+      const groups: {
+        date: string;
+        entries: {
+          id: string;
+          text: string;
+          area: string | null;
+          date: string;
+          status: "open" | "resolved";
+          created_at: string;
+        }[];
+      }[] = [];
+      for (const r of rows) {
+        const entry = {
+          id: r.id,
+          text: r.text,
+          area: r.area,
+          date: r.date,
+          status: r.status,
+          created_at: r.createdAt,
+        };
+        const group = groups.find((g) => g.date === r.date);
+        if (group) group.entries.push(entry);
+        else groups.push({ date: r.date, entries: [entry] });
+      }
+      // A backdated entry can be logged after a newer one, so bucket
+      // order alone isn't date order — sort the groups newest date first.
+      groups.sort((a, b) => b.date.localeCompare(a.date));
+      return { groups };
+    },
+  }),
+
+  resolvefeedback: defineAction({
+    description:
+      "Marks one or more feedback entries resolved by id, once they have been actioned. Resolved entries leave the open list but stay in the database as history; nothing is ever deleted.",
+    request: z.object({
+      ids: z.array(z.string().min(1).max(100)).min(1).max(200),
+    }),
+    response: z.object({ ok: z.literal(true), resolved_count: z.number() }),
+    async handler(ctx, args): Promise<{ ok: true; resolved_count: number }> {
+      const db = ctx.db<typeof schema>();
+      const updated = await db
+        .update(schema.feedback)
+        .set({ status: "resolved" })
+        .where(inArray(schema.feedback.id, args.ids))
+        .returning({ id: schema.feedback.id });
+      return { ok: true, resolved_count: updated.length };
     },
   }),
 } satisfies ActionsModule;

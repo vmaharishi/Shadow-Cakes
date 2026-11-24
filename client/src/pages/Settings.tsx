@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "../api";
+import { useState, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api, type ApiResponse } from "../api";
 import { FIELDS, useSettings, type Settings } from "../lib";
 import {
 btnPrimary,
@@ -13,12 +13,13 @@ useToast,
 } from "../ui";
 import { DataTab } from "./Import";
 
-export type SettingsTab = "costs" | "data" | "chat";
+export type SettingsTab = "costs" | "data" | "feedback" | "getting-started";
 
 const TABS: { id: SettingsTab; label: string }[] = [
   { id: "costs", label: "Costs" },
   { id: "data", label: "Data" },
-  { id: "chat", label: "Chat setup" },
+  { id: "feedback", label: "Feedback" },
+  { id: "getting-started", label: "Getting started" },
 ];
 
 const CHAT_INSTRUCTIONS = `SHADOW CAKES — WORKING NOTES
@@ -53,7 +54,13 @@ QUOTES
 
 CORRECTIONS AND DELETIONS
 - If I say something was logged wrong, show me the record before and after your fix, and wait for my yes.
-- Never delete or overwrite a record unless I explicitly ask.`;
+- Never delete or overwrite a record unless I explicitly ask.
+
+FEEDBACK
+- When I mention anything about using the tool itself — something confusing, slow, too small to tap, missing, or that I would change — treat it as feedback, even if I never say the word "feedback". If I react to the tool while we're working, offer to note it down.
+- If what I said is vague, ask me one brief follow-up first — which screen I was on, or what I was trying to do — so the note is useful.
+- Then compile it into one short, clear feedback item in my own words, and log it into the tool with the logfeedback action, tagging the area it belongs to (Dashboard, Sales, Ingredients, Quote, Recipes, Packaging, or General). Tell me it's noted.
+- Feedback is only logged — never act on it yourself, and no changes get made from it directly.`;
 
 export function SettingsPage({
   tab,
@@ -68,51 +75,271 @@ export function SettingsPage({
       <h1 className="font-heading text-3xl sm:text-4xl font-light tracking-tight text-[#1a1a1a]">
         Settings
       </h1>
-      {/* All three tabs stay on ONE line at every width — no wrapping;
-          the pills shrink their font and padding on phones to fit. */}
-      <div
-        className="mt-5 flex flex-nowrap items-center gap-1.5 sm:gap-2"
-        role="tablist"
+      {/* Section picker: an underline tab bar at the top — four tabs
+          sized to their text, left-aligned with clear space between
+          them. The active tab is bold dark text over a 3px gold
+          underline; inactive tabs are muted with no underline, and a
+          hairline runs under the whole bar. Chat setup is no longer a
+          tab: it lives inside Getting started as the "Notes" drop-down. */}
+      <nav
         aria-label="Settings sections"
+        className="mt-6 flex gap-5 border-b border-[var(--border)]"
       >
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => onTabChange(t.id)}
-            className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-2 text-[13px] sm:px-4 sm:text-sm font-semibold border transition-colors ${
-              tab === t.id
-                ? "bg-[#2c1e16] text-white border-[#2c1e16]"
-                : "bg-[var(--surface)] text-[var(--dim)] border-[var(--border)] hover:bg-[#f9ecd7]"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+        {TABS.map((t) => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              aria-current={active ? "page" : undefined}
+              onClick={() => onTabChange(t.id)}
+              className={`-mb-px whitespace-nowrap border-b-[3px] pb-2.5 pt-1 text-xs transition-colors ${
+                active
+                  ? "border-[#ae8a3e] font-bold text-[#2c1e16]"
+                  : "border-transparent font-medium text-[var(--dim)] hover:text-[#2c1e16]"
+              }`}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </nav>
 
-      {tab === "costs" ? (
-        <div className="mt-6 max-w-2xl">
-          {q.isPending ? (
-            <Loading />
-          ) : q.error ? (
-            <ErrorNote error={q.error} />
-          ) : q.data ? (
-            <SettingsForm key={JSON.stringify(q.data)} initial={q.data} />
-          ) : null}
-        </div>
-      ) : tab === "data" ? (
-        <div className="mt-6">
+      <div className="mt-6 min-w-0">
+        {tab === "costs" ? (
+          <div className="max-w-2xl">
+            {q.isPending ? (
+              <Loading />
+            ) : q.error ? (
+              <ErrorNote error={q.error} />
+            ) : q.data ? (
+              <SettingsForm key={JSON.stringify(q.data)} initial={q.data} />
+            ) : null}
+          </div>
+        ) : tab === "data" ? (
           <DataTab />
-        </div>
-      ) : (
-        <div className="mt-6">
-          <ChatSetupTab />
-        </div>
-      )}
+        ) : tab === "feedback" ? (
+          <FeedbackTab />
+        ) : (
+          <GettingStartedTab />
+        )}
+      </div>
     </div>
+  );
+}
+
+// Getting started holds two collapsible drop-downs, both closed by
+// default and styled like the Feedback sections: "Notes" first — the
+// Chat setup instruction block that used to be its own tab — then
+// "User guide", the high-level overview.
+function GettingStartedTab() {
+  return (
+    <div className="max-w-2xl space-y-4">
+      <GuideSection title="Notes">
+        <ChatSetupTab />
+      </GuideSection>
+      <GuideSection title="User guide">
+        <div className="space-y-6">
+        <p className="text-sm leading-relaxed text-[var(--text)]">
+          Shadow Cakes keeps your ingredient prices, recipe costs, and sales in one place.
+        </p>
+
+        <section>
+          <h2 className="font-heading text-lg font-semibold text-[#2c1e16]">
+            Work through Muse
+          </h2>
+          <p className="mt-2 text-sm text-[var(--text)]">
+            You don&apos;t have to type things in. Just tell Muse:
+          </p>
+          <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-[var(--text)]">
+            <li>Send a photo of a store price tag — the new price gets logged</li>
+            <li>Say you sold a cake — the sale gets logged</li>
+            <li>Ask for a quote — Muse builds it at the right price</li>
+            <li>Anything confusing or annoying — say it, and it lands in Feedback</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="font-heading text-lg font-semibold text-[#2c1e16]">
+            The pages
+          </h2>
+          <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-[var(--text)]">
+            <li>Dashboard — your totals, and what&apos;s selling</li>
+            <li>Sales — every cake you&apos;ve sold</li>
+            <li>Quote — a price quote image to send a customer</li>
+            <li>Recipes — what each cake costs to make</li>
+            <li>Components — the reusable parts, like ganache, that recipes share</li>
+            <li>Ingredients &amp; Packaging — the latest prices</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="font-heading text-lg font-semibold text-[#2c1e16]">
+            Prices change — costs keep up
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--text)]">
+            When a store price changes, send Muse the photo. Recipe costs update on their own, so your prices stay right.
+          </p>
+        </section>
+        </div>
+      </GuideSection>
+    </div>
+  );
+}
+
+function GuideSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <details className={`group ${cardCls} overflow-hidden`}>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 sm:px-5 [&::-webkit-details-marker]:hidden">
+        <span className="font-heading text-lg font-semibold text-[#2c1e16]">
+          {title}
+        </span>
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 20 20"
+          className="h-5 w-5 shrink-0 text-[var(--dim)] transition-transform group-open:rotate-180"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="m5 7.5 5 5 5-5" />
+        </svg>
+      </summary>
+      <div className="px-4 pb-5 sm:px-5">{children}</div>
+    </details>
+  );
+}
+
+// Read-only view of the feedback mailbox: two collapsible sections, Open
+// feedback and Resolved feedback, both collapsed by default and opened
+// only when tapped, each listing its entries grouped by the date they
+// were given, newest first. Feedback is logged only through Muse chat
+// (see the FEEDBACK section of the Chat setup notes) — there is
+// deliberately no form here.
+type FeedbackGroups = ApiResponse<typeof api, "listfeedback">["groups"];
+
+function FeedbackTab() {
+  const q = useQuery({
+    queryKey: ["feedback", "all"],
+    queryFn: () => api.listfeedback({ include_resolved: true }),
+  });
+  if (q.isPending) return <Loading />;
+  if (q.error) return <ErrorNote error={q.error} />;
+  const groups = q.data?.groups ?? [];
+  const split = (status: "open" | "resolved"): FeedbackGroups =>
+    groups
+      .map((g) => ({
+        date: g.date,
+        entries: g.entries.filter((e) => e.status === status),
+      }))
+      .filter((g) => g.entries.length > 0);
+  return (
+    <div className="max-w-2xl space-y-4">
+      <p className="whitespace-nowrap text-[11px] text-[var(--dim)]">
+        Just tell Muse any feedback you have — it will be logged here.
+      </p>
+      <FeedbackSection
+        title="Open feedback"
+        groups={split("open")}
+        emptyText="No open feedback."
+        defaultOpen={false}
+      />
+      <FeedbackSection
+        title="Resolved feedback"
+        groups={split("resolved")}
+        emptyText="No resolved feedback."
+        defaultOpen={false}
+      />
+    </div>
+  );
+}
+
+function FeedbackSection({
+  title,
+  groups,
+  emptyText,
+  defaultOpen,
+}: {
+  title: string;
+  groups: FeedbackGroups;
+  emptyText: string;
+  defaultOpen: boolean;
+}) {
+  const total = groups.reduce((n, g) => n + g.entries.length, 0);
+  return (
+    <details open={defaultOpen} className={`group ${cardCls} overflow-hidden`}>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 sm:px-5 [&::-webkit-details-marker]:hidden">
+        <span className="font-heading text-lg font-semibold text-[#2c1e16]">
+          {title}
+          <span className="ml-2 align-middle font-body text-sm font-semibold text-[var(--dim)]">
+            {total}
+          </span>
+        </span>
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 20 20"
+          className="h-5 w-5 shrink-0 text-[var(--dim)] transition-transform group-open:rotate-180"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="m5 7.5 5 5 5-5" />
+        </svg>
+      </summary>
+      <div className="space-y-6 px-4 pb-5 sm:px-5">
+        {groups.length === 0 ? (
+          <p className="text-sm text-[var(--dim)]">{emptyText}</p>
+        ) : (
+          groups.map((g) => (
+            <section key={g.date}>
+              <h3 className="font-heading text-base font-semibold text-[#2c1e16]">
+                {new Date(`${g.date}T00:00:00`).toLocaleDateString(undefined, {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </h3>
+              <div className="mt-3 space-y-3">
+                {g.entries.map((e) => (
+                  <div
+                    key={e.id}
+                    className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-4"
+                  >
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--dim)]">
+                      <span className="font-mono">
+                        {new Date(e.created_at).toLocaleTimeString(undefined, {
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      {e.area ? (
+                        <span className="rounded-full bg-[#f9ecd7] px-2 py-0.5 font-semibold text-[#8a6d2f]">
+                          {e.area}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[var(--text)]">
+                      {e.text}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))
+        )}
+      </div>
+    </details>
   );
 }
 
@@ -143,22 +370,20 @@ function ChatSetupTab() {
   };
 
   return (
-    <div className="max-w-2xl">
-      <div className={`${cardCls} p-5 sm:p-6`}>
-        <div className="mb-5 flex justify-end">
-          <button
-            type="button"
-            onClick={copy}
-            className={btnPrimary}
-            aria-live="polite"
-          >
-            {copied ? "Copied" : "Copy"}
-          </button>
-        </div>
-        <pre className="whitespace-pre-wrap font-body text-sm leading-relaxed text-[var(--text)]">
-          {CHAT_INSTRUCTIONS}
-        </pre>
+    <div>
+      <div className="mb-5 flex justify-end">
+        <button
+          type="button"
+          onClick={copy}
+          className={btnPrimary}
+          aria-live="polite"
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
       </div>
+      <pre className="whitespace-pre-wrap font-body text-sm leading-relaxed text-[var(--text)]">
+        {CHAT_INSTRUCTIONS}
+      </pre>
     </div>
   );
 }

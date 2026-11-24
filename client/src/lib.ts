@@ -51,8 +51,19 @@ export function qty(n: number): string {
   return String(Math.round(n * 10000) / 10000);
 }
 
+/**
+ * Today as YYYY-MM-DD in the viewer's LOCAL timezone. This must not use
+ * toISOString(): that is UTC, so in the evening in Toronto (UTC−5/−4)
+ * it already reads as tomorrow — form defaults (new sale, new price,
+ * packaging) would silently pre-fill the wrong date. The Dashboard's
+ * localDateStr has always done it this way; every other "today" in the
+ * app goes through here so they all agree.
+ */
 export function todayStr(): string {
-  return new Date().toISOString().split("T")[0] ?? "";
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
 }
 
 /** Mirror of the server rule: override price, else latest, else newest purchase. */
