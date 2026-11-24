@@ -77,7 +77,7 @@ export function App() {
     setPage("recipes");
   };
   const goDataSettings = () => {
-    setSettingsTab("upload");
+    setSettingsTab("data");
     go("settings");
   };
 

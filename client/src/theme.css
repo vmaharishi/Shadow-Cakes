@@ -54,6 +54,45 @@
   --space-accent: var(--accent);
 }
 
+/* Sale-form date inputs on phones: a native date input sizes to its
+   intrinsic content (the formatted date plus its picker indicator)
+   and, left alone, stretches wider than the form and past the modal's
+   right edge. Pin it to its column: block layout, exactly the
+   column's width, no minimum width, and no native appearance forcing
+   its own sizing; the value text sits left like every other field.
+   Scoped to phone widths — desktop rendering is unchanged. */
+@media (max-width: 639px) {
+  input[type="date"].sale-date-input {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  input[type="date"].sale-date-input::-webkit-date-and-time-value {
+    text-align: left;
+    margin: 0;
+  }
+  input[type="date"].sale-date-input::-webkit-calendar-picker-indicator {
+    margin-left: auto;
+  }
+}
+
+/* Number inputs are plain type-in boxes everywhere — no spinner
+   arrows on desktop or mobile, in any form. (Fields keep their
+   numeric phone keyboards via inputMode.) */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
 /* Phone tap targets: at least 36px tall for comfortable touch. */
 @layer base {
   button, [role="button"], select, summary, input:not([type="checkbox"], [type="radio"]) {

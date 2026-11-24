@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 import {
-CustomerNameFields,
 pastCustomers,
-splitSaleName,
+pastEvents,
+SaleNameFields,
+SaleTypeToggle,
+useSaleBuyer,
 } from "../customers";
 import {
 FIELDS,
@@ -23,6 +25,7 @@ import {
 btnGhost,
 btnIconSmall,
 btnPrimary,
+formActionsCls,
 btnSecondary,
 cardCls,
 ConfirmDialog,
@@ -30,6 +33,7 @@ EmptyState,
 ErrorNote,
 Field,
 inputCls,
+saleInputCls,
 Loading,
 Modal,
 SortTh,
@@ -51,16 +55,13 @@ type SaleSortKey =
   | "profit"
   | "margin";
 
-const SALE_SORT_OPTIONS: { key: SaleSortKey; label: string }[] = [
-  { key: "date", label: "Date" },
-  { key: "recipe", label: "Recipe" },
-  { key: "customer", label: "Customer" },
-  { key: "price", label: "Price" },
-  { key: "cost", label: "Cost" },
-  { key: "labour", label: "Labour" },
-  { key: "profit", label: "Profit" },
-  { key: "margin", label: "Margin" },
-];
+/** A sale's note as shown in the list: wrapped in brackets, unless
+ *  the stored note already carries its own brackets. */
+function bracketNote(notes: string): string {
+  const t = notes.trim();
+  if (!t) return "";
+  return t.startsWith("(") && t.endsWith(")") ? t : `(${t})`;
+}
 
 function saleSortValue(s: Sale, key: SaleSortKey): string | number {
   switch (key) {
@@ -83,51 +84,43 @@ function saleSortValue(s: Sale, key: SaleSortKey): string | number {
   }
 }
 
+type SalesViewFilter = "all" | "customer" | "event";
+
+const SALES_VIEW_OPTIONS: { key: SalesViewFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "customer", label: "Customers" },
+  { key: "event", label: "Events" },
+];
+
 export function SalesPage() {
   const symbol = useSymbol();
   const toast = useToast();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
-  const [customerFilter, setCustomerFilter] = useState("");
-  const [recipeFilter, setRecipeFilter] = useState("");
+  const [viewFilter, setViewFilter] = useState<SalesViewFilter>("all");
   const [sortKey, setSortKey] = useState<SaleSortKey>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showNew, setShowNew] = useState(false);
   const [duplicateFrom, setDuplicateFrom] = useState<Sale | null>(null);
   const [edit, setEdit] = useState<Sale | null>(null);
   const [confirm, setConfirm] = useState<
-    { kind: "one"; target: Sale } | { kind: "bulk" } | null
+    { kind: "one"; target: Sale } | null
   >(null);
 
   const q = useQuery({ queryKey: ["sales"], queryFn: () => api.listSales({}) });
   const sales = useMemo(() => q.data?.sales ?? [], [q.data]);
-  const customers = useMemo(
-    () =>
-      [...new Set(sales.map((x) => x.customer_name).filter(Boolean))].sort(
-        (a, b) => a.localeCompare(b),
-      ),
-    [sales],
-  );
-  const recipeNames = useMemo(
-    () =>
-      [...new Set(sales.map((x) => x.recipe_name).filter(Boolean))].sort(
-        (a, b) => a.localeCompare(b),
-      ),
-    [sales],
-  );
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
-    const rows = sales.filter(
-      (x) =>
-        (!s ||
-          x.recipe_name.toLowerCase().includes(s) ||
-          x.customer_name.toLowerCase().includes(s) ||
-          x.variant_name.toLowerCase().includes(s)) &&
-        (!customerFilter || x.customer_name === customerFilter) &&
-        (!recipeFilter || x.recipe_name === recipeFilter),
-    );
+    const rows = sales.filter((x) => {
+      if (viewFilter === "customer" && x.sale_type === "event") return false;
+      if (viewFilter === "event" && x.sale_type !== "event") return false;
+      return (
+        !s ||
+        x.recipe_name.toLowerCase().includes(s) ||
+        x.customer_name.toLowerCase().includes(s) ||
+        x.variant_name.toLowerCase().includes(s)
+      );
+    });
     const mul = sortDir === "asc" ? 1 : -1;
     return [...rows].sort((a, b) => {
       const va = saleSortValue(a, sortKey);
@@ -138,7 +131,7 @@ export function SalesPage() {
           : String(va).localeCompare(String(vb));
       return cmp * mul;
     });
-  }, [sales, search, customerFilter, recipeFilter, sortKey, sortDir]);
+  }, [sales, search, viewFilter, sortKey, sortDir]);
 
   const toggleSort = (key: SaleSortKey) => {
     if (key === sortKey) {
@@ -148,11 +141,10 @@ export function SalesPage() {
       setSortDir(key === "recipe" || key === "customer" ? "asc" : "desc");
     }
   };
-  const filtersActive = !!search.trim() || !!customerFilter || !!recipeFilter;
+  const filtersActive = !!search.trim() || viewFilter !== "all";
   const clearFilters = () => {
     setSearch("");
-    setCustomerFilter("");
-    setRecipeFilter("");
+    setViewFilter("all");
   };
 
   const invalidate = () => {
@@ -169,52 +161,22 @@ export function SalesPage() {
     },
     onError: onErr,
   });
-  const bulkDelete = useMutation({
-    mutationFn: (ids: string[]) => api.bulkDeleteSales({ ids }),
-    onSuccess: (r) => {
-      invalidate();
-      toast(`Deleted ${r.deleted_count} sale${r.deleted_count === 1 ? "" : "s"}`);
-      setSelected(new Set());
-      setSelectionMode(false);
-      setConfirm(null);
-    },
-    onError: onErr,
-  });
 
-  const toggleSelect = (id: string) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex items-start sm:items-end justify-between gap-3">
         <div>
           <h1 className="font-heading text-3xl sm:text-4xl font-light tracking-tight text-[#1a1a1a]">
             Sales
           </h1>
           <p className="text-sm text-[var(--dim)] mt-1">
-            {sales.length} sale{sales.length === 1 ? "" : "s"} recorded — every sale
-            keeps the cost it was recorded at
+            {sales.length} sale{sales.length === 1 ? "" : "s"}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 shrink-0">
           <button type="button" className={btnPrimary} onClick={() => setShowNew(true)}>
             <IconPlus /> New sale
-          </button>
-          <button
-            type="button"
-            className={selectionMode ? btnPrimary : btnSecondary}
-            onClick={() => {
-              setSelectionMode((m) => !m);
-              setSelected(new Set());
-            }}
-            aria-pressed={selectionMode}
-          >
-            {selectionMode ? "Done selecting" : "Select"}
           </button>
         </div>
       </div>
@@ -230,62 +192,32 @@ export function SalesPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </label>
-        <label className="block">
-          <span className="sr-only">Filter by customer</span>
-          <select
-            className={inputCls}
-            value={customerFilter}
-            onChange={(e) => setCustomerFilter(e.target.value)}
-            aria-label="Filter by customer"
-          >
-            <option value="">All customers</option>
-            {customers.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block">
-          <span className="sr-only">Filter by recipe</span>
-          <select
-            className={inputCls}
-            value={recipeFilter}
-            onChange={(e) => setRecipeFilter(e.target.value)}
-            aria-label="Filter by recipe"
-          >
-            <option value="">All recipes</option>
-            {recipeNames.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="flex items-center gap-2 lg:hidden">
-          <label className="flex items-center gap-2 text-sm text-[var(--dim)]">
-            Sort
-            <select
-              className={inputCls}
-              value={sortKey}
-              onChange={(e) => toggleSort(e.target.value as SaleSortKey)}
-              aria-label="Sort sales by"
+        {/* No mobile Sort control: on phones the cards simply show
+            in the default order (date, newest first). Sorting lives
+            in the desktop table's column headers only. */}
+      </div>
+
+      <div className="mt-4">
+        <div
+          className="inline-flex flex-wrap rounded-md border border-[var(--border)] overflow-hidden"
+          role="group"
+          aria-label="Show sales"
+        >
+          {SALES_VIEW_OPTIONS.map((o) => (
+            <button
+              key={o.key}
+              type="button"
+              aria-pressed={viewFilter === o.key}
+              onClick={() => setViewFilter(o.key)}
+              className={`px-3 text-xs font-semibold transition-colors ${
+                viewFilter === o.key
+                  ? "bg-[#2c1e16] text-[#fdf8ef]"
+                  : "bg-[var(--surface)] text-[var(--dim)] hover:text-[#2c1e16]"
+              }`}
             >
-              {SALE_SORT_OPTIONS.map((o) => (
-                <option key={o.key} value={o.key}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            className={btnSecondary}
-            onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-            aria-label={`Sort order: ${sortDir === "asc" ? "ascending" : "descending"} — tap to reverse`}
-          >
-            {sortDir === "asc" ? "↑ Asc" : "↓ Desc"}
-          </button>
+              {o.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -303,26 +235,6 @@ export function SalesPage() {
         </p>
       ) : null}
 
-      {selectionMode && selected.size > 0 ? (
-        <div className="mt-4 flex items-center gap-3 bg-[#f9ecd7] border border-[var(--border)] rounded-md px-4 py-2.5">
-          <span className="text-sm font-medium">{selected.size} selected</span>
-          <button
-            type="button"
-            className="text-sm font-semibold text-[#a63c3c]"
-            onClick={() => setConfirm({ kind: "bulk" })}
-          >
-            Delete selected
-          </button>
-          <button
-            type="button"
-            className="text-sm text-[var(--dim)]"
-            onClick={() => setSelected(new Set())}
-          >
-            Clear
-          </button>
-        </div>
-      ) : null}
-
       <div className="mt-6">
         {q.isPending ? (
           <Loading />
@@ -334,22 +246,21 @@ export function SalesPage() {
             body={
               sales.length === 0
                 ? "Tap New sale above to log one — pick the cake and size, and the cost fills in from the recipe. You can also record from a recipe's cost breakdown, or bring in past sales under Settings → Upload."
-                : "Try a different search, or clear the customer and recipe filters above."
+                : viewFilter === "event"
+                  ? "No event sales match — try a different search, or switch back to All or Customers above."
+                  : viewFilter === "customer"
+                    ? "No customer sales match — try a different search, or switch back to All or Events above."
+                    : "Try a different search."
             }
           />
         ) : (
           <>
             <div className={`hidden lg:block ${cardCls} overflow-x-auto`}>
-              <table className="w-full min-w-[920px] text-sm">
+              <table className="w-full min-w-[920px] text-[13px]">
                 <thead>
                   <tr className="bg-[var(--surface-alt)] text-left">
-                    {selectionMode ? (
-                      <th className="px-4 py-3 w-10">
-                        <span className="sr-only">Select</span>
-                      </th>
-                    ) : null}
                     <SortTh label="Date" active={sortKey === "date"} dir={sortDir} onSort={() => toggleSort("date")} />
-                    <SortTh label="Recipe" active={sortKey === "recipe"} dir={sortDir} onSort={() => toggleSort("recipe")} />
+                    <SortTh label="Recipe" className="w-full" active={sortKey === "recipe"} dir={sortDir} onSort={() => toggleSort("recipe")} />
                     <SortTh label="Customer" active={sortKey === "customer"} dir={sortDir} onSort={() => toggleSort("customer")} />
                     <SortTh label="Price" align="right" active={sortKey === "price"} dir={sortDir} onSort={() => toggleSort("price")} />
                     <SortTh label="Cost" align="right" active={sortKey === "cost"} dir={sortDir} onSort={() => toggleSort("cost")} />
@@ -364,34 +275,26 @@ export function SalesPage() {
                 <tbody>
                   {filtered.map((s) => (
                     <tr key={s.id} className="border-t border-[var(--border)] hover:bg-[#fdf8ef]">
-                      {selectionMode ? (
-                        <td className="px-4 py-3">
-                          <input
-                            type="checkbox"
-                            aria-label={`Select sale of ${s.recipe_name}`}
-                            checked={selected.has(s.id)}
-                            onChange={() => toggleSelect(s.id)}
-                          />
-                        </td>
-                      ) : null}
                       <td className="px-4 py-3 whitespace-nowrap">{s.sale_date.slice(0, 10)}</td>
-                      <td className="px-4 py-3 font-medium text-[#2c1e16]">
-                        {s.recipe_name}
+                      <td className="px-4 py-3 font-medium text-[#2c1e16] w-full">
+                        <span className="block whitespace-nowrap">{s.recipe_name}</span>
                         {s.variant_name ? (
-                          <span className="text-[var(--dim)] font-normal"> · {s.variant_name}</span>
+                          <span className="block whitespace-nowrap text-[var(--dim)] font-normal">{s.variant_name}</span>
                         ) : null}
                         {s.notes ? (
-                          <span className="block text-xs text-[var(--dim)] font-normal">{s.notes}</span>
+                          <span className="block text-xs text-[var(--dim)] font-normal">{bracketNote(s.notes)}</span>
                         ) : null}
                       </td>
-                      <td className="px-4 py-3">{s.customer_name || "—"}</td>
-                      <td className="px-4 py-3 text-right font-mono">{money(s.selling_price, symbol)}</td>
-                      <td className="px-4 py-3 text-right font-mono">{money(s.total_cost, symbol)}</td>
-                      <td className="px-4 py-3 text-right font-mono">{money(s.labour_cost, symbol)}</td>
-                      <td className={`px-4 py-3 text-right font-mono ${s.profit >= 0 ? "text-[#4a6b53]" : "text-[#a63c3c]"}`}>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {s.customer_name || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono whitespace-nowrap">{money(s.selling_price, symbol)}</td>
+                      <td className="px-4 py-3 text-right font-mono whitespace-nowrap">{money(s.total_cost, symbol)}</td>
+                      <td className="px-4 py-3 text-right font-mono whitespace-nowrap">{money(s.labour_cost, symbol)}</td>
+                      <td className={`px-4 py-3 text-right font-mono whitespace-nowrap ${s.profit >= 0 ? "text-[#4a6b53]" : "text-[#a63c3c]"}`}>
                         {money(s.profit, symbol)}
                       </td>
-                      <td className={`px-4 py-3 text-right font-mono ${s.profit_margin >= 0 ? "text-[#4a6b53]" : "text-[#a63c3c]"}`}>
+                      <td className={`px-4 py-3 text-right font-mono whitespace-nowrap ${s.profit_margin >= 0 ? "text-[#4a6b53]" : "text-[#a63c3c]"}`}>
                         {s.profit_margin.toFixed(1)}%
                       </td>
                       <td className="sticky right-0 bg-[var(--surface)] px-4 py-3 shadow-[-10px_0_10px_-10px_rgba(44,30,22,0.35)]">
@@ -416,47 +319,43 @@ export function SalesPage() {
               {filtered.map((s) => (
                 <article key={s.id} className={`${cardCls} p-4`}>
                   <div className="flex items-start gap-2">
-                    {selectionMode ? (
-                      <input
-                        type="checkbox"
-                        aria-label={`Select sale of ${s.recipe_name}`}
-                        checked={selected.has(s.id)}
-                        onChange={() => toggleSelect(s.id)}
-                        className="mt-1"
-                      />
-                    ) : null}
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-[#2c1e16]">
-                        {s.recipe_name}
-                        {s.variant_name ? (
-                          <span className="text-[var(--dim)] font-normal"> · {s.variant_name}</span>
-                        ) : null}
-                      </p>
+                      <p className="font-medium text-[#2c1e16]">{s.recipe_name}</p>
+                      {s.variant_name ? (
+                        <p className="text-sm text-[var(--dim)]">{s.variant_name}</p>
+                      ) : null}
+                      {s.notes ? (
+                        <p className="text-xs text-[var(--dim)]">{bracketNote(s.notes)}</p>
+                      ) : null}
                       <p className="text-xs text-[var(--dim)]">
                         {s.sale_date.slice(0, 10)}
-                        {s.customer_name ? ` · ${s.customer_name}` : ""}
-                        {s.notes ? ` · ${s.notes}` : ""}
+                        {s.customer_name ? (
+                          <>
+                            {" · "}
+                            <span className="whitespace-nowrap">{s.customer_name}</span>
+                          </>
+                        ) : null}
                       </p>
                     </div>
                   </div>
                   <div className="mt-3 grid grid-cols-4 gap-2 text-center bg-[var(--surface-alt)] rounded-md px-2 py-2.5">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--dim)]">Price</p>
-                      <p className="font-mono text-sm">{money(s.selling_price, symbol)}</p>
+                      <p className="font-mono text-[13px] whitespace-nowrap">{money(s.selling_price, symbol)}</p>
                     </div>
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--dim)]">Cost</p>
-                      <p className="font-mono text-sm">{money(s.total_cost, symbol)}</p>
+                      <p className="font-mono text-[13px] whitespace-nowrap">{money(s.total_cost, symbol)}</p>
                     </div>
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--dim)]">Profit</p>
-                      <p className={`font-mono text-sm ${s.profit >= 0 ? "text-[#4a6b53]" : "text-[#a63c3c]"}`}>
+                      <p className={`font-mono text-[13px] whitespace-nowrap ${s.profit >= 0 ? "text-[#4a6b53]" : "text-[#a63c3c]"}`}>
                         {money(s.profit, symbol)}
                       </p>
                     </div>
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--dim)]">Margin</p>
-                      <p className={`font-mono text-sm ${s.profit_margin >= 0 ? "text-[#4a6b53]" : "text-[#a63c3c]"}`}>
+                      <p className={`font-mono text-[13px] whitespace-nowrap ${s.profit_margin >= 0 ? "text-[#4a6b53]" : "text-[#a63c3c]"}`}>
                         {s.profit_margin.toFixed(1)}%
                       </p>
                     </div>
@@ -504,6 +403,7 @@ export function SalesPage() {
       {edit ? (
         <SaleEditModal
           sale={edit}
+          pastSales={sales}
           onClose={() => setEdit(null)}
           onSaved={() => {
             invalidate();
@@ -518,15 +418,6 @@ export function SalesPage() {
           busy={delOne.isPending}
           onCancel={() => setConfirm(null)}
           onConfirm={() => delOne.mutate(confirm.target.id)}
-        />
-      ) : null}
-      {confirm?.kind === "bulk" ? (
-        <ConfirmDialog
-          title="Delete selected sales?"
-          message={`${selected.size} sale${selected.size === 1 ? "" : "s"} will be deleted.`}
-          busy={bulkDelete.isPending}
-          onCancel={() => setConfirm(null)}
-          onConfirm={() => bulkDelete.mutate([...selected])}
         />
       ) : null}
     </div>
@@ -550,12 +441,8 @@ function NewSaleModal({
   const [recipeId, setRecipeId] = useState(initial?.recipe_id ?? "");
   const [variantId, setVariantId] = useState("");
   const [date, setDate] = useState(todayStr());
-  const [firstName, setFirstName] = useState(() =>
-    initial ? splitSaleName(initial).first : "",
-  );
-  const [lastName, setLastName] = useState(() =>
-    initial ? splitSaleName(initial).last : "",
-  );
+  const { firstName, lastName, saleType, setFirstName, setLastName, setSaleType } =
+    useSaleBuyer(initial);
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [price, setPrice] = useState(
     initial ? String(initial.selling_price) : "",
@@ -569,6 +456,7 @@ function NewSaleModal({
   // picks a different recipe/variant herself.
   const [variantPickedByUser, setVariantPickedByUser] = useState(false);
   const customers = useMemo(() => pastCustomers(pastSales), [pastSales]);
+  const events = useMemo(() => pastEvents(pastSales), [pastSales]);
 
   const recipesQ = useQuery({
     queryKey: ["recipes"],
@@ -641,6 +529,7 @@ function NewSaleModal({
         sale_date: date || todayStr(),
         customer_first_name: firstName.trim(),
         customer_last_name: lastName.trim(),
+        sale_type: saleType,
         notes: notes.trim(),
         selling_price: priceNum,
         total_cost: costNum,
@@ -661,8 +550,12 @@ function NewSaleModal({
       setError("Pick the recipe and size that was sold.");
       return;
     }
-    if (!firstName.trim() || !lastName.trim()) {
-      setError("Enter the customer's first and last name.");
+    if (!firstName.trim()) {
+      setError(
+        saleType === "event"
+          ? "Enter the event name."
+          : "Enter the customer's first name.",
+      );
       return;
     }
     if (price === "" || cost === "") {
@@ -681,10 +574,10 @@ function NewSaleModal({
         }}
         className="space-y-4"
       >
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 items-end">
           <Field label="Recipe">
             <select
-              className={inputCls}
+              className={saleInputCls}
               value={recipeId}
               onChange={(e) => {
                 const next = recipes.find((r) => r.id === e.target.value);
@@ -706,7 +599,7 @@ function NewSaleModal({
           </Field>
           <Field label="Variant">
             <select
-              className={inputCls}
+              className={saleInputCls}
               value={variantId}
               onChange={(e) => {
                 setVariantId(e.target.value);
@@ -723,29 +616,36 @@ function NewSaleModal({
               ))}
             </select>
           </Field>
-          <Field label="Sale date">
-            <input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
-          </Field>
-          <div className="col-span-2">
-            <CustomerNameFields
+          <div className="col-span-2 sm:col-span-1 min-w-0">
+            <Field label="Sale date">
+              <input type="date" className={`${saleInputCls} sale-date-input`} value={date} onChange={(e) => setDate(e.target.value)} />
+            </Field>
+          </div>
+          <div className="col-span-2 sm:col-span-1 min-w-0">
+            <SaleTypeToggle value={saleType} onChange={setSaleType} />
+          </div>
+          <div className="col-span-2 min-w-0">
+            <SaleNameFields
+              saleType={saleType}
               firstName={firstName}
               lastName={lastName}
               onFirstChange={setFirstName}
               onLastChange={setLastName}
               customers={customers}
+              events={events}
             />
           </div>
           <Field label={`Selling price (${symbol})`}>
-            <input {...FIELDS.createSale.selling_price} className={inputCls} value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" placeholder="0.00" />
+            <input {...FIELDS.createSale.selling_price} className={saleInputCls} value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" placeholder="0.00" />
           </Field>
           <Field label={`Total cost (${symbol})`}>
-            <input {...FIELDS.createSale.total_cost} className={inputCls} value={cost} onChange={(e) => setCost(e.target.value)} inputMode="decimal" placeholder={costQ.isFetching ? "Costing…" : "0.00"} />
+            <input {...FIELDS.createSale.total_cost} className={saleInputCls} value={cost} onChange={(e) => setCost(e.target.value)} inputMode="decimal" placeholder={costQ.isFetching ? "Costing…" : "0.00"} />
           </Field>
           <Field label={`Labour cost (${symbol})`}>
-            <input {...FIELDS.createSale.labour_cost} className={inputCls} value={labour} onChange={(e) => setLabour(e.target.value)} inputMode="decimal" placeholder="0.00" />
+            <input {...FIELDS.createSale.labour_cost} className={saleInputCls} value={labour} onChange={(e) => setLabour(e.target.value)} inputMode="decimal" placeholder="0.00" />
           </Field>
           <Field label="Notes">
-            <input {...FIELDS.createSale.notes} className={inputCls} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Occasion, delivery, anything" />
+            <input {...FIELDS.createSale.notes} className={saleInputCls} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Occasion, delivery, anything" />
           </Field>
         </div>
         {recommended != null ? (
@@ -774,12 +674,7 @@ function NewSaleModal({
               ? "Working out the recommended price…"
               : `The recommended price at your ${fmtPercent(targetMargin)}% target margin will appear here once the cost is in.`}
           </p>
-        ) : (
-          <p className="text-sm text-[var(--dim)]">
-            Pick a recipe and size to see the recommended price at your{" "}
-            {fmtPercent(targetMargin)}% target margin.
-          </p>
-        )}
+        ) : null}
         <div className="flex items-center justify-between bg-[var(--surface-alt)] rounded-md px-4 py-3 text-sm">
           <span className="text-[var(--dim)]">Profit</span>
           <span className={`font-mono font-semibold ${profit >= 0 ? "text-[#4a6b53]" : "text-[#a63c3c]"}`}>
@@ -796,7 +691,7 @@ function NewSaleModal({
             {error}
           </p>
         ) : null}
-        <div className="flex gap-3 justify-end pt-2">
+        <div className={formActionsCls}>
           <button type="button" className={btnSecondary} onClick={onClose}>
             Cancel
           </button>
@@ -811,10 +706,12 @@ function NewSaleModal({
 
 function SaleEditModal({
   sale,
+  pastSales,
   onClose,
   onSaved,
 }: {
   sale: Sale;
+  pastSales: Sale[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -824,19 +721,13 @@ function SaleEditModal({
   const [recipeName, setRecipeName] = useState(sale.recipe_name);
   const [variantName, setVariantName] = useState(sale.variant_name);
   const [date, setDate] = useState(sale.sale_date.slice(0, 10));
-  // Older sales carry only the combined name — split it the same way
-  // the server backfilled (first space) so the fields start sensible.
-  const [firstName, setFirstName] = useState(() => {
-    if (sale.customer_first_name) return sale.customer_first_name;
-    const at = sale.customer_name.indexOf(" ");
-    return at > 0 ? sale.customer_name.slice(0, at) : sale.customer_name;
-  });
-  const [lastName, setLastName] = useState(() => {
-    if (sale.customer_first_name || sale.customer_last_name)
-      return sale.customer_last_name;
-    const at = sale.customer_name.indexOf(" ");
-    return at > 0 ? sale.customer_name.slice(at + 1) : "";
-  });
+  // The buyer-name state splits the combined name the same way the
+  // server backfilled (first space); an event sale starts with its
+  // whole name in the single Event name field.
+  const { firstName, lastName, saleType, setFirstName, setLastName, setSaleType } =
+    useSaleBuyer(sale);
+  const customers = useMemo(() => pastCustomers(pastSales), [pastSales]);
+  const events = useMemo(() => pastEvents(pastSales), [pastSales]);
   const [notes, setNotes] = useState(sale.notes);
   const [price, setPrice] = useState(String(sale.selling_price));
   const [cost, setCost] = useState(String(sale.total_cost));
@@ -861,6 +752,7 @@ function SaleEditModal({
         sale_date: date || sale.sale_date,
         customer_first_name: firstName.trim(),
         customer_last_name: lastName.trim(),
+        sale_type: saleType,
         notes: notes.trim(),
         selling_price: priceNum,
         total_cost: costNum,
@@ -880,8 +772,12 @@ function SaleEditModal({
       setError("The recipe name can't be empty.");
       return;
     }
-    if (!firstName.trim() || !lastName.trim()) {
-      setError("Enter the customer's first and last name.");
+    if (!firstName.trim()) {
+      setError(
+        saleType === "event"
+          ? "Enter the event name."
+          : "Enter the customer's first name.",
+      );
       return;
     }
     if (price === "" || cost === "") {
@@ -900,35 +796,43 @@ function SaleEditModal({
         }}
         className="space-y-4"
       >
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 items-end">
           <Field label="Recipe">
-            <input {...FIELDS.updateSale.recipe_name} className={inputCls} value={recipeName} onChange={(e) => setRecipeName(e.target.value)} />
+            <input {...FIELDS.updateSale.recipe_name} className={saleInputCls} value={recipeName} onChange={(e) => setRecipeName(e.target.value)} />
           </Field>
           <Field label="Variant">
-            <input {...FIELDS.updateSale.variant_name} className={inputCls} value={variantName} onChange={(e) => setVariantName(e.target.value)} />
+            <input {...FIELDS.updateSale.variant_name} className={saleInputCls} value={variantName} onChange={(e) => setVariantName(e.target.value)} />
           </Field>
-          <Field label="Sale date">
-            <input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
-          </Field>
-          <div className="grid grid-cols-2 gap-4 col-span-2">
-            <Field label="Customer first name">
-              <input {...FIELDS.updateSale.customer_first_name} className={inputCls} value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="e.g. Leo" />
-            </Field>
-            <Field label="Customer last name">
-              <input {...FIELDS.updateSale.customer_last_name} className={inputCls} value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="e.g. Divecha" />
+          <div className="col-span-2 sm:col-span-1 min-w-0">
+            <Field label="Sale date">
+              <input type="date" className={`${saleInputCls} sale-date-input`} value={date} onChange={(e) => setDate(e.target.value)} />
             </Field>
           </div>
+          <div className="col-span-2 sm:col-span-1 min-w-0">
+            <SaleTypeToggle value={saleType} onChange={setSaleType} />
+          </div>
+          <div className="col-span-2 min-w-0">
+            <SaleNameFields
+              saleType={saleType}
+              firstName={firstName}
+              lastName={lastName}
+              onFirstChange={setFirstName}
+              onLastChange={setLastName}
+              customers={customers}
+              events={events}
+            />
+          </div>
           <Field label={`Selling price (${symbol})`}>
-            <input {...FIELDS.updateSale.selling_price} className={inputCls} value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" />
+            <input {...FIELDS.updateSale.selling_price} className={saleInputCls} value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" />
           </Field>
           <Field label={`Total cost (${symbol})`}>
-            <input {...FIELDS.updateSale.total_cost} className={inputCls} value={cost} onChange={(e) => setCost(e.target.value)} inputMode="decimal" />
+            <input {...FIELDS.updateSale.total_cost} className={saleInputCls} value={cost} onChange={(e) => setCost(e.target.value)} inputMode="decimal" />
           </Field>
           <Field label={`Labour cost (${symbol})`}>
-            <input {...FIELDS.updateSale.labour_cost} className={inputCls} value={labour} onChange={(e) => setLabour(e.target.value)} inputMode="decimal" />
+            <input {...FIELDS.updateSale.labour_cost} className={saleInputCls} value={labour} onChange={(e) => setLabour(e.target.value)} inputMode="decimal" />
           </Field>
           <Field label="Notes">
-            <input {...FIELDS.updateSale.notes} className={inputCls} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <input {...FIELDS.updateSale.notes} className={saleInputCls} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </Field>
         </div>
         {recommended != null ? (
@@ -963,7 +867,7 @@ function SaleEditModal({
             {error}
           </p>
         ) : null}
-        <div className="flex gap-3 justify-end pt-2">
+        <div className={formActionsCls}>
           <button type="button" className={btnSecondary} onClick={onClose}>
             Cancel
           </button>

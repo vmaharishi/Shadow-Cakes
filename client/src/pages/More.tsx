@@ -47,7 +47,7 @@ export function MorePage({ go }: { go: (p: Page) => void }) {
       <h1 className="font-heading text-3xl sm:text-4xl font-light tracking-tight text-[#1a1a1a]">
         More
       </h1>
-      <p className="text-sm text-[var(--dim)] mt-1">
+      <p className="hidden sm:block text-sm text-[var(--dim)] mt-1">
         The rest of the toolbox
       </p>
       <div className="mt-6 grid gap-3 max-w-2xl">

@@ -33,6 +33,11 @@ import {
 } from "../ui";
 import mascotUrl from "../assets/shadow-mascot.jpg";
 import wordmarkUrl from "../assets/shadow-logo-gold.png";
+// The same wordmark artwork with its white padding trimmed off, for
+// the banner strip's logos tile: untrimmed, the padding shrinks the
+// lettering to a squeezed stack beside the mascot; trimmed, it sits
+// at its natural proportions at the same height as the mascot.
+import wordmarkTileUrl from "../assets/shadow-logo-wordmark.png";
 
 // ---------- quote image ----------
 
@@ -432,6 +437,42 @@ export function QuotePage() {
     if (file) addBanner.mutate(file);
   };
 
+  // ----- banner strip: peek + dots (mobile) -----
+  // The strip's option tiles are the logos tile plus one per banner.
+  // On phones the tiles are sized so the next one peeks at the right
+  // edge, and the dots under the strip track which tile is at the
+  // strip's left edge as she scrolls.
+  const stripRef = useRef<HTMLDivElement>(null);
+  const [activeTile, setActiveTile] = useState(0);
+  const activeDot = Math.min(activeTile, banners.length);
+  const onStripScroll = () => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    const stripLeft = strip.getBoundingClientRect().left;
+    let best = 0;
+    let bestDist = Infinity;
+    strip
+      .querySelectorAll<HTMLElement>("[data-option-tile]")
+      .forEach((tile, i) => {
+        const dist = Math.abs(tile.getBoundingClientRect().left - stripLeft);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = i;
+        }
+      });
+    setActiveTile(best);
+  };
+  const scrollToTile = (index: number) => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    const tile =
+      strip.querySelectorAll<HTMLElement>("[data-option-tile]")[index];
+    if (!tile) return;
+    const delta =
+      tile.getBoundingClientRect().left - strip.getBoundingClientRect().left;
+    strip.scrollBy({ left: delta, behavior: "smooth" });
+  };
+
   // ----- footer text -----
   // The draft is local until she saves; null means "showing the saved
   // text", so a background settings refresh never eats her typing.
@@ -687,15 +728,26 @@ export function QuotePage() {
 
   return (
     <div>
-      <div>
-        <h1 className="font-heading text-3xl sm:text-4xl font-light tracking-tight text-[#1a1a1a]">
-          Quote
-        </h1>
-        <p className="text-sm text-[var(--dim)] mt-1">
-          Pick the cakes and sizes for this customer, set the prices, then
-          share the quote as an image with your customer. Your
-          picks and prices are saved.
-        </p>
+      <div className="flex items-start sm:items-end justify-between gap-3">
+        <div>
+          <h1 className="font-heading text-3xl sm:text-4xl font-light tracking-tight text-[#1a1a1a]">
+            Quote
+          </h1>
+        </div>
+        <div className="flex flex-wrap gap-2 shrink-0">
+          <button
+            type="button"
+            className={btnPrimary}
+            onClick={() => {
+              setStatus(null);
+              setPreviewOpen(true);
+            }}
+            disabled={items.length === 0}
+            aria-label="Preview the quote image, then share it"
+          >
+            Preview
+          </button>
+        </div>
       </div>
 
       {/* Banner */}
@@ -716,9 +768,65 @@ export function QuotePage() {
           </div>
         ) : (
           <>
-            <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
+            <div
+              ref={stripRef}
+              onScroll={onStripScroll}
+              className="mt-4 -mx-1 flex gap-3 overflow-x-auto px-1 pb-1 max-lg:snap-x max-lg:snap-mandatory max-lg:[scrollbar-width:none] max-lg:[&::-webkit-scrollbar]:hidden"
+            >
+              {/* No-banner tile: her two logos, exactly as they head the
+                  quote image when no banner is picked. Selecting it is
+                  selecting "no banner" — same gold ring as any tile. */}
+              <div
+                data-option-tile
+                className="relative w-[82%] shrink-0 pt-1 pr-1 max-lg:snap-start lg:w-48"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedBanner) selectBanner.mutate(null);
+                  }}
+                  aria-pressed={!selectedBanner}
+                  aria-label={
+                    !selectedBanner
+                      ? "No banner — logos — selected for the quote image"
+                      : "Use no banner — the quote image uses the Shadow Cakes logos"
+                  }
+                  className={`block w-full overflow-hidden rounded-md text-left transition-shadow ${
+                    !selectedBanner
+                      ? "ring-2 ring-[#ae8a3e] ring-offset-2 ring-offset-[var(--surface)]"
+                      : "ring-1 ring-[var(--border)] hover:ring-[#ae8a3e]"
+                  }`}
+                >
+                  <span className="flex aspect-[37/10] w-full items-center justify-center gap-3 bg-[#fff3d7] px-3">
+                    <img
+                      src={mascotUrl}
+                      alt=""
+                      className="h-12 w-auto shrink-0 object-contain mix-blend-multiply"
+                    />
+                    <img
+                      src={wordmarkTileUrl}
+                      alt=""
+                      className="h-12 w-auto shrink-0 object-contain mix-blend-multiply"
+                    />
+                  </span>
+                  <span className="flex items-center justify-between gap-2 bg-[var(--surface)] px-2 py-1.5">
+                    <span className="truncate text-xs font-semibold text-[#2c1e16]">
+                      No banner — logos
+                    </span>
+                    {!selectedBanner ? (
+                      <span className="shrink-0 text-[11px] font-semibold text-[#8a6d2f]">
+                        Selected
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              </div>
               {banners.map((b) => (
-                <div key={b.id} className="relative shrink-0 pt-1 pr-1">
+                <div
+                  key={b.id}
+                  data-option-tile
+                  className="relative w-[82%] shrink-0 pt-1 pr-1 max-lg:snap-start lg:w-48"
+                >
                   <button
                     type="button"
                     onClick={() => {
@@ -730,7 +838,7 @@ export function QuotePage() {
                         ? `${b.name} banner — selected for the quote image`
                         : `Use the ${b.name} banner on the quote image`
                     }
-                    className={`block w-48 overflow-hidden rounded-md text-left transition-shadow ${
+                    className={`block w-full overflow-hidden rounded-md text-left transition-shadow ${
                       b.selected
                         ? "ring-2 ring-[#ae8a3e] ring-offset-2 ring-offset-[var(--surface)]"
                         : "ring-1 ring-[var(--border)] hover:ring-[#ae8a3e]"
@@ -761,7 +869,7 @@ export function QuotePage() {
                 </div>
               ))}
               <label
-                className={`flex aspect-auto w-32 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-[var(--border)] text-[var(--dim)] transition-colors hover:border-[#ae8a3e] hover:text-[#8a6d2f] ${
+                className={`flex aspect-auto w-32 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-[var(--border)] text-[var(--dim)] transition-colors max-lg:snap-start hover:border-[#ae8a3e] hover:text-[#8a6d2f] ${
                   addBanner.isPending ? "opacity-50 pointer-events-none" : ""
                 }`}
               >
@@ -778,29 +886,38 @@ export function QuotePage() {
                 />
               </label>
             </div>
-            <p className="mt-2 text-xs text-[var(--dim)]">
-              {selectedBanner
-                ? `The quote image opens with the ${selectedBanner.name} banner.`
-                : "No banner selected — the quote image uses the Shadow Cakes logo header instead."}
-              {selectedBanner ? (
-                <>
-                  {" "}
+            {banners.length > 0 ? (
+              <div
+                className="mt-1 flex items-center justify-center lg:hidden"
+                role="group"
+                aria-label="Banner options position"
+              >
+                {Array.from({ length: banners.length + 1 }, (_, i) => (
                   <button
+                    key={i}
                     type="button"
-                    className="font-semibold text-[#8a6d2f] underline underline-offset-2"
-                    onClick={() => selectBanner.mutate(null)}
+                    onClick={() => scrollToTile(i)}
+                    aria-label={`Show banner option ${i + 1} of ${banners.length + 1}`}
+                    aria-current={i === activeDot || undefined}
+                    className="flex w-7 items-center justify-center"
                   >
-                    Use no banner
+                    <span
+                      className={`h-2 rounded-full transition-all ${
+                        i === activeDot
+                          ? "w-5 bg-[#ae8a3e]"
+                          : "w-2 bg-[#d9c9a3]"
+                      }`}
+                    />
                   </button>
-                </>
-              ) : null}
-            </p>
+                ))}
+              </div>
+            ) : null}
           </>
         )}
       </section>
 
       {/* On this quote */}
-      <section className={`${cardCls} mt-6 p-5`} aria-label="On this quote">
+      <section className={`${cardCls} mt-6 px-4 py-4 sm:px-5`} aria-label="On this quote">
         <h2 className="font-heading text-xl font-medium text-[#2c1e16]">
           On this quote
         </h2>
@@ -816,16 +933,20 @@ export function QuotePage() {
             it will appear here with its price.
           </p>
         ) : (
-          <ul className="mt-2 divide-y divide-[var(--border)]">
-            {items.map((item) => (
-              <QuotePriceRow key={item.id} item={item} symbol={symbol} />
-            ))}
-          </ul>
+          <>
+            <ul className="mt-1 divide-y divide-[var(--border)]">
+              {items.map((item) => (
+                <QuotePriceRow key={item.id} item={item} symbol={symbol} />
+              ))}
+            </ul>
+          </>
         )}
       </section>
 
-      {/* Add items */}
-      <section className="mt-8" aria-label="Add items">
+      {/* Add items — in the same card as "On this quote" and
+          "Footer text", so all three Quote sections read as one
+          consistent set of boxes. Search behaviour is unchanged. */}
+      <section className={`${cardCls} mt-6 px-4 py-4 sm:px-5`} aria-label="Add items">
         <h2 className="font-heading text-xl font-medium text-[#2c1e16]">
           Add items
         </h2>
@@ -850,12 +971,7 @@ export function QuotePage() {
               title="No recipes yet"
               body="Quotes are built from your recipes — add a recipe with its sizes first, then pick from it here."
             />
-          ) : !query ? (
-            <p className="text-sm text-[var(--dim)] py-1">
-              Search to add items — type a recipe or size name, then tap a
-              recipe to tick the sizes you want on this quote.
-            </p>
-          ) : searchMatches.length === 0 ? (
+          ) : !query ? null : searchMatches.length === 0 ? (
             <p className="text-sm text-[var(--dim)] py-3">
               Nothing matches “{search.trim()}” — try part of a recipe or
               size name.
@@ -871,14 +987,9 @@ export function QuotePage() {
       {/* Footer text — the last section on the page, below Add items,
           mirroring where it sits at the foot of the quote image. */}
       <section className={`${cardCls} mt-8 p-5`} aria-label="Footer text">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="font-heading text-xl font-medium text-[#2c1e16]">
-            Footer text
-          </h2>
-          <p className="text-xs text-[var(--dim)]">
-            Sits at the bottom of the quote image
-          </p>
-        </div>
+        <h2 className="font-heading text-xl font-medium text-[#2c1e16]">
+          Footer text
+        </h2>
         <label className="mt-3 block">
           <span className="sr-only">
             Text at the bottom of the quote image
@@ -891,7 +1002,7 @@ export function QuotePage() {
             onChange={(e) => setFooterDraft(e.target.value)}
           />
         </label>
-        <div className="mt-3 flex flex-wrap items-center gap-3">
+        <div className="mt-3">
           <button
             type="button"
             className={btnPrimary}
@@ -900,46 +1011,8 @@ export function QuotePage() {
           >
             {saveFooter.isPending ? "Saving…" : "Save footer text"}
           </button>
-          {footerDirty ? (
-            <span className="text-xs text-[var(--dim)]">
-              Unsaved changes — the preview already uses what you've
-              typed; save to keep it for next time.
-            </span>
-          ) : (
-            <span className="text-xs text-[var(--dim)]">
-              Saved — every quote image uses this text until you change it.
-            </span>
-          )}
         </div>
       </section>
-
-      {/* Sticky action bar — always reachable, no scrolling to the end. */}
-      <div className="sticky bottom-20 lg:bottom-4 z-30 mt-8">
-        <div className="bg-[#2c1e16] text-white rounded-lg px-4 py-3 flex flex-wrap items-center gap-3 shadow-lg">
-          <span className="text-sm flex-1 min-w-32">
-            {items.length === 0
-              ? "Nothing on this quote yet"
-              : `${items.length} item${items.length === 1 ? "" : "s"} on this quote`}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              setStatus(null);
-              setPreviewOpen(true);
-            }}
-            disabled={items.length === 0}
-            className="inline-flex items-center gap-2 bg-white text-[#2c1e16] hover:bg-[#f9ecd7] rounded-md px-4 py-2 text-sm font-semibold disabled:opacity-40"
-            aria-label="Preview the quote image, then share it"
-          >
-            Preview
-          </button>
-        </div>
-        {status ? (
-          <p className="mt-2 text-sm text-[var(--dim)]" role="status">
-            {status}
-          </p>
-        ) : null}
-      </div>
 
       {/* Preview — the final step: the quote image with only its one
           action, Share. Close via the ×. */}
@@ -1021,18 +1094,51 @@ function QuotePriceRow({ item, symbol }: { item: QuoteItem; symbol: string }) {
   };
 
   return (
-    <li className="py-3">
-      {/* Stacked row: the name + variant get the full first line (long
-          names no longer squeeze against the price field and break
-          mid-variant), the remove × sits at the right end of that
-          line, and the price field goes on the line underneath. */}
-      <div className="flex items-start gap-3">
-        <p className="flex-1 min-w-0 text-sm font-medium text-[#2c1e16] leading-snug">
+    <li className="py-2">
+      {/* Compact single row: name · variant on the left, the price
+          field inline, and the remove × at the end — all on one line
+          at every width. The name truncates/shrinks instead of
+          wrapping so the row never stacks. */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        <p
+          className="flex-1 min-w-0 truncate whitespace-nowrap text-[13px] sm:text-sm font-medium text-[#2c1e16] leading-snug"
+          title={`${item.recipe_name} · ${item.variant_name}`}
+        >
           {item.recipe_name}{" "}
           <span className="text-[var(--dim)] font-normal">
             · {item.variant_name}
           </span>
         </p>
+        <label className="flex shrink-0 items-center gap-1">
+          <span className="text-sm text-[var(--dim)]" aria-hidden="true">
+            {symbol}
+          </span>
+          <span className="sr-only">
+            Quote price for {item.recipe_name} {item.variant_name}
+          </span>
+          <input
+            {...FIELDS.updateQuoteItemPrice.price}
+            type="text"
+            inputMode="decimal"
+            className={`${inputCls.replace("w-full", "w-[4.75rem] sm:w-24")} px-2 py-1.5 text-right font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onFocus={() => {
+              focused.current = true;
+            }}
+            onBlur={() => {
+              focused.current = false;
+              commit();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
+            aria-label={`Quote price for ${item.recipe_name} ${item.variant_name}`}
+          />
+        </label>
         <button
           type="button"
           className={`${btnIconSmall} shrink-0`}
@@ -1044,36 +1150,6 @@ function QuotePriceRow({ item, symbol }: { item: QuoteItem; symbol: string }) {
           <IconX />
         </button>
       </div>
-      <label className="mt-2 flex items-center gap-1">
-        <span className="text-sm text-[var(--dim)]" aria-hidden="true">
-          {symbol}
-        </span>
-        <span className="sr-only">
-          Quote price for {item.recipe_name} {item.variant_name}
-        </span>
-        <input
-          {...FIELDS.updateQuoteItemPrice.price}
-          type="number"
-          inputMode="decimal"
-          className={`${inputCls.replace("w-full", "w-24")} text-right font-mono`}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onFocus={() => {
-            focused.current = true;
-          }}
-          onBlur={() => {
-            focused.current = false;
-            commit();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              (e.target as HTMLInputElement).blur();
-            }
-          }}
-          aria-label={`Quote price for ${item.recipe_name} ${item.variant_name}`}
-        />
-      </label>
     </li>
   );
 }

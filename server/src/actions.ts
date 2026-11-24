@@ -435,6 +435,7 @@ const saleShape = z.object({
   customer_name: z.string(),
   customer_first_name: z.string(),
   customer_last_name: z.string(),
+  sale_type: z.enum(["customer", "event"]),
   notes: z.string(),
   selling_price: z.number(),
   total_cost: z.number(),
@@ -750,6 +751,7 @@ function toSale(s: SaleRow): z.infer<typeof saleShape> {
     customer_name: s.customerName,
     customer_first_name: s.customerFirstName,
     customer_last_name: s.customerLastName,
+    sale_type: s.saleType,
     notes: s.notes,
     selling_price: s.sellingPrice,
     total_cost: s.totalCost,
@@ -846,25 +848,17 @@ async function loadQuoteItems(db: Db): Promise<QuoteItemRow[]> {
 }
 
 /**
- * The price a variant starts with on the quote: her own selling price
- * for it — the most recent recorded sale of that recipe + variant —
- * when she has one; otherwise the suggested price at her target
- * margin, rounded UP to the next whole dollar (the ceiling rule the
- * recipe and sale pages use). $0 when the variant has no cost yet.
+ * The price a variant starts with on the quote: always the suggested
+ * price — the variant's live total cost ÷ (1 − target margin),
+ * rounded UP to the next whole dollar (the ceiling rule the recipe
+ * and sale pages use). She can type any price over it on the quote;
+ * that override lives on the quote row only. $0 when the variant has
+ * no cost yet.
  */
-async function quoteDefaultPrice(
-  db: Db,
-  recipeId: string,
+function quoteDefaultPrice(
   variant: RecipeVariant,
   cx: CostContext,
-): Promise<number> {
-  const sales = await db
-    .select()
-    .from(schema.sales)
-    .where(eq(schema.sales.recipeId, recipeId))
-    .orderBy(desc(schema.sales.saleDate), desc(schema.sales.createdAt));
-  const last = sales.find((s) => s.variantName === variant.name);
-  if (last) return round2(last.sellingPrice);
+): number {
   const totals = variantTotals(variant, cx);
   if (totals.totalCost <= 0) return 0;
   const margin = cx.settings.targetMarginPercent ?? 40;
@@ -1847,6 +1841,7 @@ function processSales(
   s.rows_read = rows.length;
   const first = rows[0];
   if (!first) return s;
+  let eventCount = 0;
   const hasRecipe = "recipe_name" in first || "recipe" in first;
   const hasPrice = "selling_price" in first;
   if (!hasRecipe || !hasPrice) {
@@ -1895,12 +1890,21 @@ function processSales(
     const variant = impStr(impCell(row, "variant_name", "variant"));
     const customer = impStr(impCell(row, "customer_name", "customer"));
     // The sheet carries one customer column; the app stores first and
-    // last separately (both required in the forms). Split on the first
-    // space — the same mapping migration 0006 applied to older rows.
+    // last separately (only the first name is required — a row with a
+    // single-word customer, i.e. a blank last name, imports fine).
+    // Split on the first space — the same mapping migration 0006
+    // applied to older rows.
     const spaceAt = customer.indexOf(" ");
     const customerFirst =
       spaceAt > 0 ? customer.slice(0, spaceAt) : customer;
     const customerLast = spaceAt > 0 ? customer.slice(spaceAt + 1) : "";
+    // The Customer/Event distinction: the backup workbook writes a
+    // "Sale Type" column (Customer / Event); older sheets without it
+    // import everything as customer sales.
+    const saleType =
+      impStr(impCell(row, "sale_type", "type")).toLowerCase() === "event"
+        ? "event"
+        : "customer";
     if (mode === "merge") {
       const key = saleKey(date, recipeName, variant, customer, selling);
       if (world.saleKeys.has(key)) {
@@ -1923,6 +1927,7 @@ function processSales(
         customerName: customer,
         customerFirstName: customerFirst,
         customerLastName: customerLast,
+        saleType,
         notes: impStr(impCell(row, "notes")),
         sellingPrice: selling,
         totalCost,
@@ -1932,7 +1937,11 @@ function processSales(
         createdAt: nowIso(),
       },
     });
+    if (saleType === "event") eventCount++;
     s.appended++;
+  }
+  if (eventCount > 0) {
+    s.detail = `${eventCount} of the sales are event sales (Sale Type: Event) — the rest are customer sales.`;
   }
   return s;
 }
@@ -2396,7 +2405,7 @@ async function buildWorkbookSheets(db: Db): Promise<WorkbookSheet[]> {
   // Sales History — her sheet's human-style headers; the margin is a
   // decimal fraction (0.32 = 32%), exactly as her file stores it.
   const saleSheetRows: Cell[][] = [
-    ["Sale Date", "Recipe", "Variant", "Customer", "Selling Price", "Total Cost", "Labour Cost", "Profit", "Profit Margin", "Notes"],
+    ["Sale Date", "Recipe", "Variant", "Customer", "Sale Type", "Selling Price", "Total Cost", "Labour Cost", "Profit", "Profit Margin", "Notes"],
   ];
   for (const s of saleRows) {
     saleSheetRows.push([
@@ -2404,6 +2413,7 @@ async function buildWorkbookSheets(db: Db): Promise<WorkbookSheet[]> {
       s.recipeName,
       s.variantName,
       s.customerName,
+      s.saleType === "event" ? "Event" : "Customer",
       s.sellingPrice,
       s.totalCost,
       s.labourCost,
@@ -3714,7 +3724,7 @@ export const Actions = {
   }),
 
   salesInsights: defineAction({
-    description: "Computes the dashboard Insights for one period (inclusive YYYY-MM month range matching the dashboard period filter; optional exact from_date/to_date bounds override the months for a custom range): the top-selling item by units (revenue breaks ties), the top buyer by spend, and the highest- and lowest-margin items (margin = total profit ÷ total revenue per recipe + variant, over the period). Fields are null when the period has no qualifying sales.",
+    description: "Computes the dashboard Insights for one period (inclusive YYYY-MM month range matching the dashboard period filter; optional exact from_date/to_date bounds override the months for a custom range): the top-selling item by units (revenue breaks ties), the top customer and the top event by spend (ranked separately — customer sales only count toward Top customer, event sales only toward Top event), and the highest- and lowest-margin items (margin = total profit ÷ total revenue per recipe + variant, over the period). Fields are null when the period has no qualifying sales.",
     request: z.object({
       from_month: z.string().regex(/^\d{4}-\d{2}$/),
       to_month: z.string().regex(/^\d{4}-\d{2}$/),
@@ -3738,9 +3748,16 @@ export const Actions = {
           revenue: z.number(),
         })
         .nullable(),
-      top_buyer: z
+      top_customer: z
         .object({
           customer_name: z.string(),
+          orders: z.number(),
+          spent: z.number(),
+        })
+        .nullable(),
+      top_event: z
+        .object({
+          event_name: z.string(),
           orders: z.number(),
           spent: z.number(),
         })
@@ -3775,7 +3792,11 @@ export const Actions = {
         string,
         { recipe_name: string; variant_name: string; units: number; revenue: number; profit: number }
       >();
-      const buyers = new Map<string, { orders: number; spent: number }>();
+      // Customers and events are ranked separately — an event (a
+      // market day with many sales) must never crowd out the top
+      // individual customer, and vice versa.
+      const customers = new Map<string, { orders: number; spent: number }>();
+      const events = new Map<string, { orders: number; spent: number }>();
       for (const r of rows) {
         const ik = `${r.recipeId} ${r.variantName}`;
         const item = items.get(ik) ?? {
@@ -3792,19 +3813,23 @@ export const Actions = {
 
         const name = r.customerName.trim();
         if (name) {
-          const buyer = buyers.get(name) ?? { orders: 0, spent: 0 };
+          const map = r.saleType === "event" ? events : customers;
+          const buyer = map.get(name) ?? { orders: 0, spent: 0 };
           buyer.orders += 1;
           buyer.spent += r.sellingPrice;
-          buyers.set(name, buyer);
+          map.set(name, buyer);
         }
       }
 
       const topItem = [...items.values()].sort(
         (a, b) => b.units - a.units || b.revenue - a.revenue,
       )[0];
-      const topBuyer = [...buyers.entries()].sort(
-        (a, b) => b[1].spent - a[1].spent || b[1].orders - a[1].orders,
-      )[0];
+      const bySpend = (
+        a: [string, { orders: number; spent: number }],
+        b: [string, { orders: number; spent: number }],
+      ) => b[1].spent - a[1].spent || b[1].orders - a[1].orders;
+      const topCustomer = [...customers.entries()].sort(bySpend)[0];
+      const topEvent = [...events.entries()].sort(bySpend)[0];
       const margins = [...items.values()]
         .filter((i) => i.revenue > 0)
         .map((i) => ({
@@ -3823,11 +3848,18 @@ export const Actions = {
               revenue: round2(topItem.revenue),
             }
           : null,
-        top_buyer: topBuyer
+        top_customer: topCustomer
           ? {
-              customer_name: topBuyer[0],
-              orders: topBuyer[1].orders,
-              spent: round2(topBuyer[1].spent),
+              customer_name: topCustomer[0],
+              orders: topCustomer[1].orders,
+              spent: round2(topCustomer[1].spent),
+            }
+          : null,
+        top_event: topEvent
+          ? {
+              event_name: topEvent[0],
+              orders: topEvent[1].orders,
+              spent: round2(topEvent[1].spent),
             }
           : null,
         highest_margin: margins[0] ?? null,
@@ -3863,14 +3895,15 @@ export const Actions = {
   }),
 
   createSale: defineAction({
-    description: "Records a sale with its cost snapshot, profit, and margin. The customer's first and last name are both required; the combined customer_name is composed server-side.",
+    description: "Records a sale with its cost snapshot, profit, and margin. Only the customer's first name is required (the last name is optional); the combined customer_name is composed server-side. sale_type marks the buyer as an individual customer or an event.",
     request: z.object({
       recipe_id: z.string().max(100),
       recipe_name: z.string().min(1).max(300),
       variant_name: z.string().max(200),
       sale_date: z.string().min(1).max(40),
       customer_first_name: z.string().trim().min(1, "Enter the customer's first name.").max(150),
-      customer_last_name: z.string().trim().min(1, "Enter the customer's last name.").max(150),
+      customer_last_name: z.string().trim().max(150).default(""),
+      sale_type: z.enum(["customer", "event"]).default("customer"),
       notes: z.string().max(2000).default(""),
       selling_price: z.number().min(0),
       total_cost: z.number().min(0),
@@ -3887,9 +3920,12 @@ export const Actions = {
         recipeName: args.recipe_name,
         variantName: args.variant_name,
         saleDate: args.sale_date,
-        customerName: `${args.customer_first_name} ${args.customer_last_name}`,
+        customerName: [args.customer_first_name, args.customer_last_name]
+          .filter(Boolean)
+          .join(" "),
         customerFirstName: args.customer_first_name,
         customerLastName: args.customer_last_name,
+        saleType: args.sale_type,
         notes: args.notes,
         sellingPrice: args.selling_price,
         totalCost: args.total_cost,
@@ -3905,14 +3941,15 @@ export const Actions = {
   }),
 
   updateSale: defineAction({
-    description: "Updates a recorded sale's details and figures. The customer's first and last name are both required; the combined customer_name is composed server-side.",
+    description: "Updates a recorded sale's details and figures. Only the customer's first name is required (the last name is optional); the combined customer_name is composed server-side. sale_type marks the buyer as an individual customer or an event.",
     request: z.object({
       id: z.string().min(1),
       recipe_name: z.string().min(1).max(300),
       variant_name: z.string().max(200),
       sale_date: z.string().min(1).max(40),
       customer_first_name: z.string().trim().min(1, "Enter the customer's first name.").max(150),
-      customer_last_name: z.string().trim().min(1, "Enter the customer's last name.").max(150),
+      customer_last_name: z.string().trim().max(150).default(""),
+      sale_type: z.enum(["customer", "event"]).default("customer"),
       notes: z.string().max(2000),
       selling_price: z.number().min(0),
       total_cost: z.number().min(0),
@@ -3929,9 +3966,12 @@ export const Actions = {
           recipeName: args.recipe_name,
           variantName: args.variant_name,
           saleDate: args.sale_date,
-          customerName: `${args.customer_first_name} ${args.customer_last_name}`,
+          customerName: [args.customer_first_name, args.customer_last_name]
+            .filter(Boolean)
+            .join(" "),
           customerFirstName: args.customer_first_name,
           customerLastName: args.customer_last_name,
+          saleType: args.sale_type,
           notes: args.notes,
           sellingPrice: args.selling_price,
           totalCost: args.total_cost,
@@ -3989,7 +4029,7 @@ export const Actions = {
 
   addQuoteItem: defineAction({
     description:
-      "Adds one recipe variant to the saved quote (picking the same variant twice returns the existing row). The starting price is her most recent selling price for that variant when she has sold it, otherwise the suggested price at her target margin rounded up to the next whole dollar.",
+      "Adds one recipe variant to the saved quote (picking the same variant twice returns the existing row). The starting price is the suggested price at her target margin — live total cost divided by (1 − target margin), rounded up to the next whole dollar. She can override it on the quote; prices already on the saved quote are never changed by this.",
     request: z.object({
       recipe_id: z.string().min(1),
       variant_id: z.string().min(1),
@@ -4015,7 +4055,7 @@ export const Actions = {
       const variant = recipe.variants.find((v) => v.id === args.variant_id);
       if (!variant) throw new Error("Variant not found.");
       const cx = await loadCostContext(db);
-      const price = await quoteDefaultPrice(db, recipe.id, variant, cx);
+      const price = quoteDefaultPrice(variant, cx);
       const siblings = await db.select({ id: schema.quoteItems.id }).from(schema.quoteItems);
       const row: QuoteItemRow = {
         id: uid(),

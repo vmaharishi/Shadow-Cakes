@@ -16,6 +16,7 @@ import { IngredientLinesEditor, PackagingLinesEditor } from "../editors";
 import {
 btnGhost,
 btnPrimary,
+formActionsCls,
 btnSecondary,
 cardCls,
 ConfirmDialog,
@@ -37,11 +38,9 @@ export function ComponentsPage() {
   const toast = useToast();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [form, setForm] = useState<Component | "new" | null>(null);
   const [confirm, setConfirm] = useState<
-    { kind: "one"; target: Component } | { kind: "bulk" } | null
+    { kind: "one"; target: Component } | null
   >(null);
 
   const q = useQuery({
@@ -66,50 +65,27 @@ export function ComponentsPage() {
     },
     onError: onErr,
   });
-  const bulkDelete = useMutation({
-    mutationFn: (ids: string[]) => api.bulkDeleteComponents({ ids }),
-    onSuccess: (r) => {
-      invalidate();
-      toast(`Deleted ${r.deleted_count} component${r.deleted_count === 1 ? "" : "s"}`);
-      setSelected(new Set());
-      setSelectionMode(false);
-      setConfirm(null);
-    },
-    onError: onErr,
-  });
 
-  const toggleSelect = (id: string) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex items-start sm:items-end justify-between gap-3">
         <div>
           <h1 className="font-heading text-3xl sm:text-4xl font-light tracking-tight text-[#1a1a1a]">
             Components
           </h1>
           <p className="text-sm text-[var(--dim)] mt-1">
-            {components.length} reusable sub-recipe{components.length === 1 ? "" : "s"} —
-            frostings, ganaches, fillings, each with its sizes underneath
+            <span className="sm:hidden">
+              {components.length} component{components.length === 1 ? "" : "s"}
+            </span>
+            <span className="hidden sm:inline">
+              {components.length} reusable sub-recipe
+              {components.length === 1 ? "" : "s"} — frostings, ganaches,
+              fillings, each with its sizes underneath
+            </span>
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={selectionMode ? btnPrimary : btnSecondary}
-            onClick={() => {
-              setSelectionMode((m) => !m);
-              setSelected(new Set());
-            }}
-            aria-pressed={selectionMode}
-          >
-            {selectionMode ? "Done selecting" : "Select"}
-          </button>
+        <div className="flex flex-wrap gap-2 shrink-0">
           <button type="button" className={btnPrimary} onClick={() => setForm("new")}>
             <IconPlus /> New component
           </button>
@@ -128,26 +104,6 @@ export function ComponentsPage() {
           />
         </label>
       </div>
-
-      {selectionMode && selected.size > 0 ? (
-        <div className="mt-4 flex items-center gap-3 bg-[#f9ecd7] border border-[var(--border)] rounded-md px-4 py-2.5">
-          <span className="text-sm font-medium">{selected.size} selected</span>
-          <button
-            type="button"
-            className="text-sm font-semibold text-[#a63c3c]"
-            onClick={() => setConfirm({ kind: "bulk" })}
-          >
-            Delete selected
-          </button>
-          <button
-            type="button"
-            className="text-sm text-[var(--dim)]"
-            onClick={() => setSelected(new Set())}
-          >
-            Clear
-          </button>
-        </div>
-      ) : null}
 
       <div className="mt-6">
         {q.isPending ? (
@@ -174,15 +130,6 @@ export function ComponentsPage() {
             {filtered.map((c) => (
               <article key={c.id} className={`${cardCls} p-5 flex flex-col`}>
                 <div className="flex items-start gap-2">
-                  {selectionMode ? (
-                    <input
-                      type="checkbox"
-                      aria-label={`Select ${c.name}`}
-                      checked={selected.has(c.id)}
-                      onChange={() => toggleSelect(c.id)}
-                      className="mt-1"
-                    />
-                  ) : null}
                   <div className="min-w-0 flex-1">
                     <h2 className="font-heading text-lg font-medium text-[#2c1e16] leading-snug">
                       {c.name}
@@ -264,15 +211,6 @@ export function ComponentsPage() {
           busy={delOne.isPending}
           onCancel={() => setConfirm(null)}
           onConfirm={() => delOne.mutate(confirm.target.id)}
-        />
-      ) : null}
-      {confirm?.kind === "bulk" ? (
-        <ConfirmDialog
-          title="Delete selected components?"
-          message={`${selected.size} component${selected.size === 1 ? "" : "s"} will be deleted.`}
-          busy={bulkDelete.isPending}
-          onCancel={() => setConfirm(null)}
-          onConfirm={() => bulkDelete.mutate([...selected])}
         />
       ) : null}
     </div>
@@ -463,7 +401,7 @@ function ComponentForm({
         }}
         className="space-y-6"
       >
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 items-end">
           <Field label="Name">
             <input
               className={inputCls}
@@ -513,7 +451,7 @@ function ComponentForm({
 
           {active ? (
             <div className="mt-4 space-y-6">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 items-end">
                 <Field label="Size name">
                   <input
                     className={inputCls}
@@ -615,7 +553,7 @@ function ComponentForm({
             {error}
           </p>
         ) : null}
-        <div className="flex gap-3 justify-end pt-2">
+        <div className={formActionsCls}>
           <button type="button" className={btnSecondary} onClick={onClose}>
             Cancel
           </button>

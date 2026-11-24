@@ -13,6 +13,7 @@ type Price,
 import {
 btnGhost,
 btnPrimary,
+formActionsCls,
 btnSecondary,
 cardCls,
 ConfirmDialog,
@@ -35,10 +36,6 @@ export function IngredientsPage() {
   const toast = useToast();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
-  const [vendor, setVendor] = useState("");
-  const [brand, setBrand] = useState("");
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [ingForm, setIngForm] = useState<Ingredient | "new" | null>(null);
   const [historyIng, setHistoryIng] = useState<Ingredient | null>(null);
   const [priceForm, setPriceForm] = useState<
@@ -47,7 +44,7 @@ export function IngredientsPage() {
   const [confirm, setConfirm] = useState<
     | { kind: "ingredient"; target: Ingredient }
     | { kind: "price"; target: Price }
-    | { kind: "bulk" }
+   
     | null
   >(null);
 
@@ -56,50 +53,19 @@ export function IngredientsPage() {
     queryFn: () => api.listIngredients({}),
   });
   const ingredients = useMemo(() => q.data?.ingredients ?? [], [q.data]);
-  const vendors = useMemo(() => {
-    const set = new Set<string>();
-    for (const ing of ingredients) {
-      for (const p of ing.prices) {
-        if (p.store_vendor.trim()) set.add(p.store_vendor);
-      }
-    }
-    return [...set].sort((a, b) => a.localeCompare(b));
-  }, [ingredients]);
-  // Brands ride on each price's notes (the price form's Brand field).
-  const brands = useMemo(() => {
-    const set = new Set<string>();
-    for (const ing of ingredients) {
-      for (const p of ing.prices) {
-        const b = (p.notes ?? "").trim();
-        if (b) set.add(b);
-      }
-    }
-    return [...set].sort((a, b) => a.localeCompare(b));
-  }, [ingredients]);
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
-    return ingredients.filter((i) => {
-      if (
-        vendor &&
-        !i.prices.some((p) => p.store_vendor === vendor)
-      )
-        return false;
-      if (
-        brand &&
-        !i.prices.some((p) => (p.notes ?? "").trim() === brand)
-      )
-        return false;
-      if (!s) return true;
-      return (
+    if (!s) return ingredients;
+    return ingredients.filter(
+      (i) =>
         i.name.toLowerCase().includes(s) ||
         i.prices.some(
           (p) =>
             p.store_vendor.toLowerCase().includes(s) ||
             (p.notes ?? "").toLowerCase().includes(s),
-        )
-      );
-    });
-  }, [ingredients, search, vendor, brand]);
+        ),
+    );
+  }, [ingredients, search]);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["ingredients"] });
   const onErr = (e: Error) => toast(e.message, "error");
@@ -122,50 +88,21 @@ export function IngredientsPage() {
     },
     onError: onErr,
   });
-  const bulkDelete = useMutation({
-    mutationFn: (ids: string[]) => api.bulkDeleteIngredients({ ids }),
-    onSuccess: (r) => {
-      invalidate();
-      toast(`Deleted ${r.deleted_count} ingredient${r.deleted_count === 1 ? "" : "s"}`);
-      setSelected(new Set());
-      setSelectionMode(false);
-      setConfirm(null);
-    },
-    onError: onErr,
-  });
 
-  const toggleSelect = (id: string) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex items-start sm:items-end justify-between gap-3">
         <div>
           <h1 className="font-heading text-3xl sm:text-4xl font-light tracking-tight text-[#1a1a1a]">
             Ingredients
           </h1>
           <p className="text-sm text-[var(--dim)] mt-1">
-            {ingredients.length} ingredient{ingredients.length === 1 ? "" : "s"} with
-            vendor pricing
+            {ingredients.length} ingredient{ingredients.length === 1 ? "" : "s"}
+            <span className="hidden sm:inline"> with vendor pricing</span>
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={selectionMode ? btnPrimary : btnSecondary}
-            onClick={() => {
-              setSelectionMode((m) => !m);
-              setSelected(new Set());
-            }}
-            aria-pressed={selectionMode}
-          >
-            {selectionMode ? "Done selecting" : "Select"}
-          </button>
+        <div className="flex flex-wrap gap-2 shrink-0">
           <button type="button" className={btnPrimary} onClick={() => setIngForm("new")}>
             <IconPlus /> New ingredient
           </button>
@@ -183,78 +120,20 @@ export function IngredientsPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </label>
-        <label className="block">
-          <span className="sr-only">Filter by store</span>
-          <select
-            className={`${inputCls} w-auto min-w-44`}
-            value={vendor}
-            onChange={(e) => setVendor(e.target.value)}
-            aria-label="Filter by store"
-          >
-            <option value="">All stores</option>
-            {vendors.map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block">
-          <span className="sr-only">Filter by brand</span>
-          <select
-            className={`${inputCls} w-auto min-w-44`}
-            value={brand}
-            onChange={(e) => setBrand(e.target.value)}
-            aria-label="Filter by brand"
-          >
-            <option value="">All brands</option>
-            {brands.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-          </select>
-        </label>
-        {search.trim() || vendor || brand ? (
+        {search.trim() ? (
           <p className="w-full text-xs text-[var(--dim)]" role="status">
             Showing {filtered.length} of {ingredients.length} ingredients
-            {vendor ? ` priced at ${vendor}` : ""}
-            {brand ? ` from ${brand}` : ""}
-            {search.trim() ? ` matching “${search.trim()}”` : ""}.{" "}
+            {` matching “${search.trim()}”`}.{" "}
             <button
               type="button"
               className="font-semibold text-[#8a6d2f] underline underline-offset-2"
-              onClick={() => {
-                setSearch("");
-                setVendor("");
-                setBrand("");
-              }}
+              onClick={() => setSearch("")}
             >
-              Clear search &amp; filters
+              Clear search
             </button>
           </p>
         ) : null}
       </div>
-
-      {selectionMode && selected.size > 0 ? (
-        <div className="mt-4 flex items-center gap-3 bg-[#f9ecd7] border border-[var(--border)] rounded-md px-4 py-2.5">
-          <span className="text-sm font-medium">{selected.size} selected</span>
-          <button
-            type="button"
-            className="text-sm font-semibold text-[#a63c3c]"
-            onClick={() => setConfirm({ kind: "bulk" })}
-          >
-            Delete selected
-          </button>
-          <button
-            type="button"
-            className="text-sm text-[var(--dim)]"
-            onClick={() => setSelected(new Set())}
-          >
-            Clear
-          </button>
-        </div>
-      ) : null}
 
       <div className="mt-6">
         {q.isPending ? (
@@ -302,15 +181,6 @@ export function IngredientsPage() {
               return (
                 <article key={ing.id} className={`${cardCls} p-5 flex flex-col`}>
                   <div className="flex items-start gap-2">
-                    {selectionMode ? (
-                      <input
-                        type="checkbox"
-                        aria-label={`Select ${ing.name}`}
-                        checked={selected.has(ing.id)}
-                        onChange={() => toggleSelect(ing.id)}
-                        className="mt-1"
-                      />
-                    ) : null}
                     <div className="min-w-0 flex-1">
                       <h2 className="font-heading text-lg font-medium text-[#2c1e16] leading-snug">
                         {ing.name}
@@ -466,15 +336,6 @@ export function IngredientsPage() {
           busy={delPrice.isPending}
           onCancel={() => setConfirm(null)}
           onConfirm={() => delPrice.mutate(confirm.target.id)}
-        />
-      ) : null}
-      {confirm?.kind === "bulk" ? (
-        <ConfirmDialog
-          title="Delete selected ingredients?"
-          message={`${selected.size} ingredient${selected.size === 1 ? "" : "s"} and all of their price records will be deleted.`}
-          busy={bulkDelete.isPending}
-          onCancel={() => setConfirm(null)}
-          onConfirm={() => bulkDelete.mutate([...selected])}
         />
       ) : null}
     </div>
@@ -644,7 +505,7 @@ function IngredientForm({
             />
           </Field>
         </div>
-        <div className="flex gap-3 justify-end pt-2">
+        <div className={formActionsCls}>
           <button type="button" className={btnSecondary} onClick={onClose}>
             Cancel
           </button>
@@ -833,7 +694,7 @@ function PriceForm({
             {error}
           </p>
         ) : null}
-        <div className="flex gap-3 justify-end pt-2">
+        <div className={formActionsCls}>
           <button type="button" className={btnSecondary} onClick={onClose}>
             Cancel
           </button>

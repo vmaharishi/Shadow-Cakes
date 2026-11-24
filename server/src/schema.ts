@@ -181,6 +181,13 @@ export const sales = sqliteTable("sales", {
   // before the split were backfilled by migration 0006.
   customerFirstName: text("customer_first_name").notNull().default(""),
   customerLastName: text("customer_last_name").notNull().default(""),
+  // Whether the buyer was an individual customer or an event (a
+  // market, a fair…). Event sales carry the event's name in the
+  // customer fields; the dashboard's Insights rank Top customer and
+  // Top event separately so the two never compete.
+  saleType: text("sale_type", { enum: ["customer", "event"] })
+    .notNull()
+    .default("customer"),
   notes: text("notes").notNull().default(""),
   sellingPrice: real("selling_price").notNull(),
   totalCost: real("total_cost").notNull(),

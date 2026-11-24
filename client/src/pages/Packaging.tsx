@@ -13,6 +13,7 @@ import {
 btnGhost,
 btnIconSmall,
 btnPrimary,
+formActionsCls,
 btnSecondary,
 cardCls,
 ConfirmDialog,
@@ -31,14 +32,6 @@ type SortDir,
 } from "../ui";
 
 type PackagingSortKey = "name" | "vendor" | "price" | "unitCost" | "date";
-
-const PACKAGING_SORT_OPTIONS: { key: PackagingSortKey; label: string }[] = [
-  { key: "name", label: "Item" },
-  { key: "vendor", label: "Store" },
-  { key: "price", label: "Purchase price" },
-  { key: "unitCost", label: "Unit cost" },
-  { key: "date", label: "Purchased" },
-];
 
 function packagingSortValue(p: PackagingItem, key: PackagingSortKey): string | number {
   switch (key) {
@@ -60,14 +53,11 @@ export function PackagingPage() {
   const toast = useToast();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
-  const [vendorFilter, setVendorFilter] = useState("");
   const [sortKey, setSortKey] = useState<PackagingSortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [form, setForm] = useState<PackagingItem | "new" | null>(null);
   const [confirm, setConfirm] = useState<
-    { kind: "one"; target: PackagingItem } | { kind: "bulk" } | null
+    { kind: "one"; target: PackagingItem } | null
   >(null);
 
   const q = useQuery({
@@ -75,21 +65,13 @@ export function PackagingPage() {
     queryFn: () => api.listPackaging({}),
   });
   const items = useMemo(() => q.data?.packaging ?? [], [q.data]);
-  const vendors = useMemo(
-    () =>
-      [...new Set(items.map((p) => p.store_vendor).filter(Boolean))].sort(
-        (a, b) => a.localeCompare(b),
-      ),
-    [items],
-  );
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     const rows = items.filter(
       (p) =>
-        (!s ||
-          p.name.toLowerCase().includes(s) ||
-          p.store_vendor.toLowerCase().includes(s)) &&
-        (!vendorFilter || p.store_vendor === vendorFilter),
+        !s ||
+        p.name.toLowerCase().includes(s) ||
+        p.store_vendor.toLowerCase().includes(s),
     );
     const mul = sortDir === "asc" ? 1 : -1;
     return [...rows].sort((a, b) => {
@@ -101,7 +83,7 @@ export function PackagingPage() {
           : String(va).localeCompare(String(vb));
       return cmp * mul;
     });
-  }, [items, search, vendorFilter, sortKey, sortDir]);
+  }, [items, search, sortKey, sortDir]);
 
   const toggleSort = (key: PackagingSortKey) => {
     if (key === sortKey) {
@@ -111,10 +93,9 @@ export function PackagingPage() {
       setSortDir(key === "name" || key === "vendor" ? "asc" : "desc");
     }
   };
-  const filtersActive = !!search.trim() || !!vendorFilter;
+  const filtersActive = !!search.trim();
   const clearFilters = () => {
     setSearch("");
-    setVendorFilter("");
   };
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["packaging"] });
@@ -128,50 +109,24 @@ export function PackagingPage() {
     },
     onError: onErr,
   });
-  const bulkDelete = useMutation({
-    mutationFn: (ids: string[]) => api.bulkDeletePackaging({ ids }),
-    onSuccess: (r) => {
-      invalidate();
-      toast(`Deleted ${r.deleted_count} item${r.deleted_count === 1 ? "" : "s"}`);
-      setSelected(new Set());
-      setSelectionMode(false);
-      setConfirm(null);
-    },
-    onError: onErr,
-  });
 
-  const toggleSelect = (id: string) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex items-start sm:items-end justify-between gap-3">
         <div>
           <h1 className="font-heading text-3xl sm:text-4xl font-light tracking-tight text-[#1a1a1a]">
             Packaging
           </h1>
           <p className="text-sm text-[var(--dim)] mt-1">
-            {items.length} item{items.length === 1 ? "" : "s"} — boxes, boards,
-            ribbons, and everything a cake lives in
+            {items.length} item{items.length === 1 ? "" : "s"}
+            <span className="hidden sm:inline">
+              {" "}
+              — boxes, boards, ribbons, and everything a cake lives in
+            </span>
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={selectionMode ? btnPrimary : btnSecondary}
-            onClick={() => {
-              setSelectionMode((m) => !m);
-              setSelected(new Set());
-            }}
-            aria-pressed={selectionMode}
-          >
-            {selectionMode ? "Done selecting" : "Select"}
-          </button>
+        <div className="flex flex-wrap gap-2 shrink-0">
           <button type="button" className={btnPrimary} onClick={() => setForm("new")}>
             <IconPlus /> New item
           </button>
@@ -189,47 +144,9 @@ export function PackagingPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </label>
-        <label className="block">
-          <span className="sr-only">Filter by store</span>
-          <select
-            className={inputCls}
-            value={vendorFilter}
-            onChange={(e) => setVendorFilter(e.target.value)}
-            aria-label="Filter by store"
-          >
-            <option value="">All stores</option>
-            {vendors.map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="flex items-center gap-2 md:hidden">
-          <label className="flex items-center gap-2 text-sm text-[var(--dim)]">
-            Sort
-            <select
-              className={inputCls}
-              value={sortKey}
-              onChange={(e) => toggleSort(e.target.value as PackagingSortKey)}
-              aria-label="Sort packaging by"
-            >
-              {PACKAGING_SORT_OPTIONS.map((o) => (
-                <option key={o.key} value={o.key}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            className={btnSecondary}
-            onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-            aria-label={`Sort order: ${sortDir === "asc" ? "ascending" : "descending"} — tap to reverse`}
-          >
-            {sortDir === "asc" ? "↑ Asc" : "↓ Desc"}
-          </button>
-        </div>
+        {/* No mobile Sort control: on phones the items simply show
+            in the default order (item name, A–Z). Sorting lives in
+            the desktop table's column headers only. */}
       </div>
 
       {filtersActive ? (
@@ -241,29 +158,9 @@ export function PackagingPage() {
             className="font-semibold text-[#2c1e16] underline underline-offset-2"
             onClick={clearFilters}
           >
-            Clear filters
+            Clear search
           </button>
         </p>
-      ) : null}
-
-      {selectionMode && selected.size > 0 ? (
-        <div className="mt-4 flex items-center gap-3 bg-[#f9ecd7] border border-[var(--border)] rounded-md px-4 py-2.5">
-          <span className="text-sm font-medium">{selected.size} selected</span>
-          <button
-            type="button"
-            className="text-sm font-semibold text-[#a63c3c]"
-            onClick={() => setConfirm({ kind: "bulk" })}
-          >
-            Delete selected
-          </button>
-          <button
-            type="button"
-            className="text-sm text-[var(--dim)]"
-            onClick={() => setSelected(new Set())}
-          >
-            Clear
-          </button>
-        </div>
       ) : null}
 
       <div className="mt-6">
@@ -293,10 +190,17 @@ export function PackagingPage() {
                 on the right exactly as on the Sales page, so Edit/Delete
                 can never be clipped off-screen. */}
             <div className={`hidden md:block ${cardCls} overflow-x-auto`}>
-              <table className="w-full min-w-[720px] text-sm">
+              <table className="w-full min-w-[860px] text-sm table-fixed">
+                <colgroup>
+                  <col />
+                  <col className="w-[13%]" />
+                  <col className="w-[21%]" />
+                  <col className="w-[17%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-24" />
+                </colgroup>
                 <thead>
                   <tr className="bg-[var(--surface-alt)] text-left">
-                    {selectionMode ? <th className="px-4 py-3 w-10"><span className="sr-only">Select</span></th> : null}
                     <SortTh label="Item" active={sortKey === "name"} dir={sortDir} onSort={() => toggleSort("name")} />
                     <SortTh label="Store" active={sortKey === "vendor"} dir={sortDir} onSort={() => toggleSort("vendor")} />
                     <SortTh label="Purchase" align="right" active={sortKey === "price"} dir={sortDir} onSort={() => toggleSort("price")} />
@@ -308,16 +212,6 @@ export function PackagingPage() {
                 <tbody>
                   {filtered.map((p) => (
                     <tr key={p.id} className="border-t border-[var(--border)] hover:bg-[#fdf8ef]">
-                      {selectionMode ? (
-                        <td className="px-4 py-3">
-                          <input
-                            type="checkbox"
-                            aria-label={`Select ${p.name}`}
-                            checked={selected.has(p.id)}
-                            onChange={() => toggleSelect(p.id)}
-                          />
-                        </td>
-                      ) : null}
                       <td className="px-4 py-3 font-medium text-[#2c1e16]">
                         {p.name}
                         {p.notes ? (
@@ -325,13 +219,13 @@ export function PackagingPage() {
                         ) : null}
                       </td>
                       <td className="px-4 py-3">{p.store_vendor || "—"}</td>
-                      <td className="px-4 py-3 text-right font-mono">
+                      <td className="px-4 py-3 text-right font-mono whitespace-nowrap">
                         {money(p.purchase_price, symbol)} / {p.package_size} {p.unit}
                       </td>
-                      <td className="px-4 py-3 text-right font-mono">
+                      <td className="px-4 py-3 text-right font-mono whitespace-nowrap">
                         {unitMoney(p.unit_cost, symbol)}/{p.unit}
                       </td>
-                      <td className="px-4 py-3">{p.purchase_date ? p.purchase_date.slice(0, 10) : "—"}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{p.purchase_date ? p.purchase_date.slice(0, 10) : "—"}</td>
                       <td className="sticky right-0 bg-[var(--surface)] px-4 py-3 shadow-[-10px_0_10px_-10px_rgba(44,30,22,0.35)]">
                         <span className="flex justify-end gap-1">
                           <button type="button" className={btnIconSmall} aria-label={`Edit ${p.name}`} title="Edit" onClick={() => setForm(p)}>
@@ -352,15 +246,6 @@ export function PackagingPage() {
               {filtered.map((p) => (
                 <article key={p.id} className={`${cardCls} p-5`}>
                   <div className="flex items-start gap-2">
-                    {selectionMode ? (
-                      <input
-                        type="checkbox"
-                        aria-label={`Select ${p.name}`}
-                        checked={selected.has(p.id)}
-                        onChange={() => toggleSelect(p.id)}
-                        className="mt-1"
-                      />
-                    ) : null}
                     <div className="min-w-0 flex-1">
                       <h2 className="font-heading text-lg font-medium text-[#2c1e16]">{p.name}</h2>
                       <p className="text-xs text-[var(--dim)]">
@@ -413,15 +298,6 @@ export function PackagingPage() {
           busy={delOne.isPending}
           onCancel={() => setConfirm(null)}
           onConfirm={() => delOne.mutate(confirm.target.id)}
-        />
-      ) : null}
-      {confirm?.kind === "bulk" ? (
-        <ConfirmDialog
-          title="Delete selected packaging?"
-          message={`${selected.size} item${selected.size === 1 ? "" : "s"} will be deleted.`}
-          busy={bulkDelete.isPending}
-          onCancel={() => setConfirm(null)}
-          onConfirm={() => bulkDelete.mutate([...selected])}
         />
       ) : null}
     </div>
@@ -603,7 +479,7 @@ function PackagingForm({
             {error}
           </p>
         ) : null}
-        <div className="flex gap-3 justify-end pt-2">
+        <div className={formActionsCls}>
           <button type="button" className={btnSecondary} onClick={onClose}>
             Cancel
           </button>

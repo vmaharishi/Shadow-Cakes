@@ -28,6 +28,14 @@ export const btnDanger =
   "inline-flex items-center justify-center gap-2 bg-[#a63c3c] text-white hover:bg-[#8f3232] rounded-md px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 disabled:pointer-events-none";
 export const inputCls =
   "w-full bg-white border border-[var(--border)] rounded-md px-3 py-2 text-sm text-[var(--text)] outline-none transition-all focus:border-[#ae8a3e] focus:ring-2 focus:ring-[#ae8a3e]/20 disabled:opacity-60";
+// The sale forms' field sizing (New/Edit/Duplicate sale and Record a
+// Sale, which share the customers.tsx name fields and toggle): every
+// box is exactly its column's width — never wider — and all boxes
+// share one height and padding so the form reads proportional. The
+// native date input additionally needs the .sale-date-input rules in
+// theme.css: its intrinsic minimum width otherwise pushes it past
+// the form's right edge on phones.
+export const saleInputCls = `${inputCls} h-11 min-w-0 max-w-full box-border`;
 export const cardCls =
   "bg-[var(--surface)] border border-[var(--border)] rounded-lg";
 export const labelCls =
@@ -51,19 +59,21 @@ export function SortTh({
   dir,
   onSort,
   align = "left",
+  className = "",
 }: {
   label: string;
   active: boolean;
   dir: SortDir;
   onSort: () => void;
   align?: "left" | "right";
+  className?: string;
 }) {
   return (
     <th
       aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : undefined}
       className={`px-4 py-3 text-xs font-bold uppercase tracking-wider ${
         active ? "text-[#2c1e16]" : "text-[var(--dim)]"
-      } ${align === "right" ? "text-right" : "text-left"}`}
+      } ${align === "right" ? "text-right" : "text-left"} ${className}`}
     >
       <button
         type="button"
@@ -99,7 +109,7 @@ export function Field({
   children: ReactNode;
 }) {
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <span className={labelCls}>{label}</span>
       {children}
     </label>
@@ -157,17 +167,30 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// The action row (Cancel / Save) at the foot of a modal form. On
+// phones it is a bar pinned to the bottom of the sheet — sticky
+// within the modal's scroll area, bled out to the sheet's edges over
+// the content padding — so Save is always in reach on a long form.
+// On desktop it is the plain right-aligned row it always was.
+export const formActionsCls =
+  "flex gap-3 justify-end sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-[var(--border)] bg-[var(--surface)] px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:static sm:mx-0 sm:mb-0 sm:border-0 sm:bg-transparent sm:px-0 sm:pt-2 sm:pb-0";
+
 // ---------- modal ----------
 export function Modal({
   title,
   onClose,
   children,
   wide,
+  sheet = true,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
   wide?: boolean;
+  /** Full-screen sheet on phones (the default for forms and content
+   *  dialogs). Small confirms pass false and keep the compact
+   *  bottom-sheet look. Desktop is a centered modal either way. */
+  sheet?: boolean;
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -185,9 +208,11 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`bg-[var(--surface)] w-full max-h-[92dvh] overflow-y-auto rounded-t-xl sm:rounded-lg border border-[var(--border)] ${
-          wide ? "sm:max-w-3xl" : "sm:max-w-lg"
-        }`}
+        className={`bg-[var(--surface)] w-full overflow-y-auto border-[var(--border)] ${
+          sheet
+            ? "h-dvh max-h-dvh rounded-none border-0 sm:h-auto sm:max-h-[92dvh] sm:rounded-lg sm:border"
+            : "max-h-[92dvh] rounded-t-xl border sm:rounded-lg"
+        } ${wide ? "sm:max-w-3xl" : "sm:max-w-lg"}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 bg-[var(--surface)] flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[var(--border)] z-10">
@@ -223,7 +248,7 @@ export function ConfirmDialog({
   onCancel: () => void;
 }) {
   return (
-    <Modal title={title} onClose={onCancel}>
+    <Modal title={title} onClose={onCancel} sheet={false}>
       <p className="text-sm text-[var(--dim)] leading-relaxed">{message}</p>
       <div className="mt-6 flex gap-3 justify-end">
         <button type="button" className={btnSecondary} onClick={onCancel}>

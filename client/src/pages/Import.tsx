@@ -128,38 +128,27 @@ const KIND_LABELS: Record<Kind, string> = {
 
 // ---------- page ----------
 
-/** The Backup tab's whole content: the workbook download, nothing else. */
-export function BackupTab() {
-  return (
-    <div>
-      <BackupCard />
-    </div>
-  );
-}
-
-/** The Upload tab's whole content: the workbook import, with the
- *  individual-sheet imports tucked under their expander beneath it. */
-export function UploadTab() {
+/** The Data tab's whole content, top to bottom: the backup download,
+ *  the workbook import, then the individual-sheet imports tucked under
+ *  their expander beneath both. */
+export function DataTab() {
   const [sheetsOpen, setSheetsOpen] = useState(false);
   return (
-    <div>
+    <div className="space-y-6">
+      <BackupCard />
       <WorkbookCard />
 
       {/* The individual-sheet imports stay one tap away but out of the
           main view — the workbook in is the everyday upload path. */}
       <button
         type="button"
-        className="mt-6 w-full flex items-center gap-3 rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-left hover:border-[#ae8a3e]/60 transition-colors"
+        className="w-full flex items-center gap-3 rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-left hover:border-[#ae8a3e]/60 transition-colors"
         aria-expanded={sheetsOpen}
         onClick={() => setSheetsOpen((o) => !o)}
       >
         <span className="flex-1 min-w-0">
           <span className="block font-heading text-lg font-medium text-[#2c1e16]">
             Individual sheets
-          </span>
-          <span className="block text-xs text-[var(--dim)] mt-0.5">
-            Loading from separate files — like the original five spreadsheets —
-            or topping up just one section.
           </span>
         </span>
         <span
@@ -170,7 +159,7 @@ export function UploadTab() {
         </span>
       </button>
       {sheetsOpen ? (
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           {DEFS.map((def) => (
             <ImportCard key={def.kind} def={def} />
           ))}
@@ -335,12 +324,6 @@ function BackupCard() {
           <h2 className="font-heading text-lg font-medium text-[#2c1e16]">
             One workbook with everything
           </h2>
-          <p className="text-sm text-[var(--dim)] mt-1 leading-relaxed">
-            A single Excel file with a tab per dataset — Ingredient Pricing,
-            Packaging, Components, Recipes, Sales History, and Settings — each
-            tab in the same format the Upload tab accepts. Download it, keep
-            it somewhere safe, and it can restore the whole tool.
-          </p>
         </div>
         <button
           type="button"
@@ -412,7 +395,7 @@ function ModeToggle({
   mode: Mode;
   onChange: (m: Mode) => void;
 }) {
-  const opt = (m: Mode, title: string, body: string) => (
+  const opt = (m: Mode, title: string, body?: string) => (
     <button
       type="button"
       onClick={() => onChange(m)}
@@ -424,23 +407,17 @@ function ModeToggle({
       }`}
     >
       <span className="block text-sm font-semibold text-[#2c1e16]">{title}</span>
-      <span className="block text-xs text-[var(--dim)] mt-0.5 leading-relaxed">
-        {body}
-      </span>
+      {body ? (
+        <span className="block text-xs text-[var(--dim)] mt-0.5 leading-relaxed">
+          {body}
+        </span>
+      ) : null}
     </button>
   );
   return (
     <div className="flex flex-col sm:flex-row gap-2" role="group" aria-label="Import mode">
-      {opt(
-        "merge",
-        "Merge",
-        "Prices and sales are added as new records; recipes, components, and packaging with the same name are updated. Nothing is deleted.",
-      )}
-      {opt(
-        "replace",
-        "Replace",
-        "Each included section is wiped first, then loaded from the file — a clean restore.",
-      )}
+      {opt("merge", "Merge")}
+      {opt("replace", "Replace")}
     </div>
   );
 }
@@ -757,12 +734,6 @@ function WorkbookCard() {
       <h2 className="font-heading text-lg font-medium text-[#2c1e16]">
         Import the workbook
       </h2>
-      <p className="text-sm text-[var(--dim)] mt-1 leading-relaxed max-w-2xl">
-        The main way in: one file, every tab at once — the backup workbook
-        from the Backup tab, or any workbook with the same tabs. You'll see a
-        preview of exactly what will change before anything is applied.
-        Separate single sheets still work under Individual sheets below.
-      </p>
       <FlowControls
         flow={flow}
         fileRef={fileRef}
@@ -828,9 +799,9 @@ const DEFS: ImportDef[] = [
     kind: "sales",
     title: "Sales History",
     description:
-      "Past sales, in the same format the Sales page exports — and the format of the original Sales History sheet (margins there are decimal fractions, 0.32 for 32%; both are understood). Merging adds sales that aren't already recorded and skips exact duplicates.",
-    columns: ["Sale Date", "Recipe", "Variant", "Customer", "Selling Price", "Total Cost", "Labour Cost", "Profit", "Profit Margin", "Notes"],
-    templateRows: [["2026-01-20", "Vanilla Layer Cake", "8-inch", "Priya", 65, 28.5, 7.5, 36.5, 0.56, "Birthday order"]],
+      "Past sales, in the same format the Sales page exports — and the format of the original Sales History sheet (margins there are decimal fractions, 0.32 for 32%; both are understood). The Sale Type column marks each sale Customer or Event (older sheets without it import as Customer). A customer with just a first name is fine — the last name can be blank. Merging adds sales that aren't already recorded and skips exact duplicates.",
+    columns: ["Sale Date", "Recipe", "Variant", "Customer", "Sale Type", "Selling Price", "Total Cost", "Labour Cost", "Profit", "Profit Margin", "Notes"],
+    templateRows: [["2026-01-20", "Vanilla Layer Cake", "8-inch", "Priya", "Customer", 65, 28.5, 7.5, 36.5, 0.56, "Birthday order"]],
   },
 ];
 
@@ -874,7 +845,6 @@ function ImportCard({ def }: { def: ImportDef }) {
   return (
     <section className={`${cardCls} p-5 flex flex-col`}>
       <h2 className="font-heading text-lg font-medium text-[#2c1e16]">{def.title}</h2>
-      <p className="text-sm text-[var(--dim)] mt-1 leading-relaxed">{def.description}</p>
       <div className="mt-3">
         <p className="text-xs font-bold uppercase tracking-wider text-[var(--dim)]">
           Expected columns

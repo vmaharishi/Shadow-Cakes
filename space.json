@@ -2,7 +2,7 @@
   "entry": "client/dist/index.html",
   "managedCronJobs": [],
   "name": "Shadow Cakes",
-  "platformVersion": 29,
+  "platformVersion": 31,
   "runtime": "typescript",
   "slug": "shadow-cakes-pricing-tool"
 }

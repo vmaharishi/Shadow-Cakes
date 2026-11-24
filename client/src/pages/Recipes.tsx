@@ -20,7 +20,6 @@ wholeMoney,
 useSymbol,
 useTargetMargin,
 type Breakdown,
-type CostSnapshot,
 type PreparedPhoto,
 type Recipe,
 type Variant,
@@ -30,10 +29,17 @@ ComponentLinesEditor,
 IngredientLinesEditor,
 PackagingLinesEditor,
 } from "../editors";
-import { CustomerNameFields, pastCustomers } from "../customers";
+import {
+  pastCustomers,
+  pastEvents,
+  SaleNameFields,
+  SaleTypeToggle,
+  useSaleBuyer,
+} from "../customers";
 import {
 btnGhost,
 btnPrimary,
+formActionsCls,
 btnSecondary,
 cardCls,
 ConfirmDialog,
@@ -41,6 +47,7 @@ EmptyState,
 ErrorNote,
 Field,
 inputCls,
+saleInputCls,
 labelCls,
 Loading,
 microLabel,
@@ -258,17 +265,20 @@ export function RecipesPage({
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex items-start sm:items-end justify-between gap-3">
         <div>
           <h1 className="font-heading text-3xl sm:text-4xl font-light tracking-tight text-[#1a1a1a]">
             Recipes
           </h1>
           <p className="text-sm text-[var(--dim)] mt-1">
-            {recipes.length} recipe{recipes.length === 1 ? "" : "s"} — tap one to
-            cost it, price it, and record sales
+            {recipes.length} recipe{recipes.length === 1 ? "" : "s"}
+            <span className="hidden sm:inline">
+              {" "}
+              — tap one to cost it, price it, and record sales
+            </span>
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 shrink-0">
           <button type="button" className={btnPrimary} onClick={() => setCreateOpen(true)}>
             <IconPlus /> New recipe
           </button>
@@ -510,7 +520,7 @@ function CreateRecipeModal({
             autoFocus
           />
         </Field>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 items-end">
           <Field label="Category (optional)">
             <CategoryField
               value={category || null}
@@ -579,7 +589,7 @@ function CreateRecipeModal({
             {error}
           </p>
         ) : null}
-        <div className="flex gap-3 justify-end pt-2">
+        <div className={formActionsCls}>
           <button type="button" className={btnSecondary} onClick={onClose}>
             Cancel
           </button>
@@ -650,7 +660,6 @@ function RecipeDetail({
       setBaseline(JSON.stringify(d));
       qc.invalidateQueries({ queryKey: ["recipes"] });
       qc.invalidateQueries({ queryKey: ["variantCost"] });
-      qc.invalidateQueries({ queryKey: ["costHistory"] });
     },
     onError: (e) => toast(e.message, "error"),
   });
@@ -715,11 +724,6 @@ function RecipeDetail({
       toast("Photo removed");
     },
     onError: (e) => toast(e.message, "error"),
-  });
-
-  const historyQ = useQuery({
-    queryKey: ["costHistory", recipe.id],
-    queryFn: () => api.costHistory({ recipe_id: recipe.id }),
   });
 
   const priceForActive =
@@ -918,7 +922,7 @@ function RecipeDetail({
         <div className="mt-4 grid gap-5 lg:grid-cols-[1fr_380px] items-start">
           {/* Variant editor */}
           <div className={`${cardCls} p-5`}>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 items-end">
               <Field label="Variant name (size)">
                 <input
                   className={inputCls}
@@ -1163,16 +1167,6 @@ function RecipeDetail({
         </div>
       )}
 
-      {active ? (
-        <CostHistoryPanel
-          snapshots={(historyQ.data?.snapshots ?? []).filter(
-            (s) => s.variant_id === active.id,
-          )}
-          variantName={active.name}
-          symbol={symbol}
-        />
-      ) : null}
-
       {/* Save bar */}
       <div className="sticky bottom-20 lg:bottom-4 z-30 mt-6">
         <div className="bg-[#2c1e16] text-white rounded-lg px-4 py-3 flex items-center gap-3 shadow-lg">
@@ -1271,140 +1265,6 @@ function RecipeDetail({
         />
       ) : null}
     </div>
-  );
-}
-
-function CostHistoryPanel({
-  snapshots,
-  variantName,
-  symbol,
-}: {
-  snapshots: CostSnapshot[];
-  variantName: string;
-  symbol: string;
-}) {
-  const fmtDate = (iso: string) =>
-    new Date(iso).toLocaleDateString("en-CA", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-
-  // Trend line geometry (oldest → newest), padded so a flat line still reads.
-  const W = 600;
-  const H = 72;
-  const PAD = 8;
-  const costs = snapshots.map((s) => s.total_cost);
-  const min = Math.min(...costs);
-  const max = Math.max(...costs);
-  const span = max - min || 1;
-  const points = snapshots
-    .map((s, i) => {
-      const x =
-        snapshots.length === 1
-          ? W / 2
-          : PAD + (i / (snapshots.length - 1)) * (W - PAD * 2);
-      const y = H - PAD - ((s.total_cost - min) / span) * (H - PAD * 2);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-
-  const newestFirst = [...snapshots].reverse().slice(0, 10);
-
-  return (
-    <section className={`${cardCls} p-5 mt-5`}>
-      <h3 className="font-heading text-lg font-medium text-[#2c1e16]">
-        Cost history
-      </h3>
-      <p className="text-xs text-[var(--dim)] mt-0.5">
-        {variantName} — a snapshot is recorded whenever a price, packaging or
-        component cost, labour/utility rate, or the recipe itself changes this
-        variant's total cost.
-      </p>
-      {snapshots.length === 0 ? (
-        <p className="text-sm text-[var(--dim)] mt-4">
-          No snapshots yet — the first one lands the next time anything moves
-          this variant's cost.
-        </p>
-      ) : (
-        <div className="mt-4">
-          {snapshots.length > 1 ? (
-            <div>
-              <svg
-                viewBox={`0 0 ${W} ${H}`}
-                className="w-full h-20"
-                role="img"
-                aria-label={`Cost trend for ${variantName}: from ${money(costs[0] ?? 0, symbol)} to ${money(costs[costs.length - 1] ?? 0, symbol)}`}
-                preserveAspectRatio="none"
-              >
-                <polyline
-                  points={points}
-                  fill="none"
-                  stroke="#ae8a3e"
-                  strokeWidth="2.5"
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  vectorEffect="non-scaling-stroke"
-                />
-              </svg>
-              <div className="flex justify-between text-xs text-[var(--dim)] -mt-1">
-                <span>
-                  {fmtDate(snapshots[0]?.captured_at ?? "")} ·{" "}
-                  {money(costs[0] ?? 0, symbol)}
-                </span>
-                <span>
-                  {money(costs[costs.length - 1] ?? 0, symbol)} ·{" "}
-                  {fmtDate(
-                    snapshots[snapshots.length - 1]?.captured_at ?? "",
-                  )}
-                </span>
-              </div>
-            </div>
-          ) : null}
-          <ul className="mt-3 divide-y divide-[var(--border)]">
-            {newestFirst.map((s, i) => {
-              const prev = snapshots[snapshots.length - 1 - i - 1];
-              const delta = prev ? s.total_cost - prev.total_cost : null;
-              return (
-                <li
-                  key={s.id}
-                  className="flex items-baseline justify-between gap-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">
-                      {fmtDate(s.captured_at)}
-                    </p>
-                    <p className="text-xs text-[var(--dim)] truncate">
-                      {s.reason || "Cost recorded"}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="font-mono text-sm text-[#2c1e16]">
-                      {money(s.total_cost, symbol)}
-                    </p>
-                    {delta != null && Math.abs(delta) >= 0.005 ? (
-                      <p
-                        className={`font-mono text-xs ${
-                          delta > 0 ? "text-[#9a6716]" : "text-[#4a6b53]"
-                        }`}
-                      >
-                        {delta > 0 ? "+" : "−"}
-                        {money(Math.abs(delta), symbol).replace("-", "")}
-                      </p>
-                    ) : null}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-          {snapshots.length > 10 ? (
-            <p className="text-xs text-[var(--dim)] mt-2">
-              Showing the 10 most recent of {snapshots.length} snapshots.
-            </p>
-          ) : null}
-        </div>
-      )}
-    </section>
   );
 }
 
@@ -1596,8 +1456,8 @@ function RecordSaleModal({
   const toast = useToast();
   const qc = useQueryClient();
   const [date, setDate] = useState(todayStr());
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const { firstName, lastName, saleType, setFirstName, setLastName, setSaleType } =
+    useSaleBuyer();
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
   const selling = breakdown.selling_price ?? 0;
@@ -1614,6 +1474,10 @@ function RecordSaleModal({
     () => pastCustomers(salesQ.data?.sales ?? []),
     [salesQ.data],
   );
+  const events = useMemo(
+    () => pastEvents(salesQ.data?.sales ?? []),
+    [salesQ.data],
+  );
 
   const create = useMutation({
     mutationFn: () =>
@@ -1624,6 +1488,7 @@ function RecordSaleModal({
         sale_date: date || todayStr(),
         customer_first_name: firstName.trim(),
         customer_last_name: lastName.trim(),
+        sale_type: saleType,
         notes: notes.trim(),
         selling_price: selling,
         total_cost: breakdown.total_cost,
@@ -1674,35 +1539,46 @@ function RecordSaleModal({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (!firstName.trim() || !lastName.trim()) {
-            setError("Enter the customer's first and last name.");
+          if (!firstName.trim()) {
+            setError(
+              saleType === "event"
+                ? "Enter the event name."
+                : "Enter the customer's first name.",
+            );
             return;
           }
           create.mutate();
         }}
         className="space-y-4 mt-5"
       >
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Sale date">
-            <input
-              type="date"
-              className={inputCls}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </Field>
+        <div className="grid grid-cols-2 gap-4 items-end">
+          <div className="col-span-2 sm:col-span-1 min-w-0">
+            <Field label="Sale date">
+              <input
+                type="date"
+                className={`${saleInputCls} sale-date-input`}
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </Field>
+          </div>
+          <div className="col-span-2 sm:col-span-1 min-w-0">
+            <SaleTypeToggle value={saleType} onChange={setSaleType} />
+          </div>
         </div>
-        <CustomerNameFields
+        <SaleNameFields
+          saleType={saleType}
           firstName={firstName}
           lastName={lastName}
           onFirstChange={setFirstName}
           onLastChange={setLastName}
           customers={customers}
+          events={events}
         />
         <Field label="Notes (optional)">
           <input
             {...FIELDS.createSale.notes}
-            className={inputCls}
+            className={saleInputCls}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Occasion, delivery, anything"
@@ -1713,7 +1589,7 @@ function RecordSaleModal({
             {error}
           </p>
         ) : null}
-        <div className="flex gap-3 justify-end pt-2">
+        <div className={formActionsCls}>
           <button type="button" className={btnSecondary} onClick={onClose}>
             Cancel
           </button>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, type ApiResponse } from "../api";
 import { FIELDS, money, useSymbol } from "../lib";
@@ -12,6 +12,7 @@ import {
   Loading,
   microLabel,
   IconBook,
+  IconChevronRight,
   IconUpload,
 } from "../ui";
 import type { Page } from "../App";
@@ -36,9 +37,8 @@ const FRAMES: { key: Frame; label: string }[] = [
 ];
 
 /**
- * Compact label for a chart point: "$850", "$1.2k". The full amount stays
- * in the stat cards and the chart's accessible description — near a point
- * only a few characters fit before neighbours collide.
+ * Compact figure for the monthly list: "$850", "$1.2k". The full
+ * amount stays in the stat cards and each bar's accessible label.
  */
 function chartMoney(n: number, symbol: string): string {
   const sign = n < 0 ? "-" : "";
@@ -52,310 +52,17 @@ function chartMoney(n: number, symbol: string): string {
 }
 
 /**
- * Stacked bar chart for wide (desktop) widths. One bar per month,
- * stacked from three segments: Revenue (bottom), Wages, and Profit
- * (top). All three always show — there are no series toggles. A
- * negative profit month renders its profit segment below the zero
- * line instead of breaking the stack. Segment value labels (cream
- * pill / dark ink) render only when the Numbers switch is on, and
- * only where the segment is tall enough to hold one legibly.
- * Clicking a bar selects that month for the readout under the chart.
- */
-function StackedBarChart({
-  months,
-  symbol,
-  showNumbers,
-  selectedMonth,
-  onSelect,
-}: {
-  months: MonthRow[];
-  symbol: string;
-  showNumbers: boolean;
-  selectedMonth: string | null;
-  onSelect: (month: string) => void;
-}) {
-  // Measure the container so the SVG uses real pixels at every width:
-  // font size and stroke stay constant whether the chart is 340px on a
-  // phone or 1000px+ on a desktop, instead of scaling up with viewBox.
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const [measuredW, setMeasuredW] = useState(340);
-  useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const update = () => {
-      const w = Math.round(el.getBoundingClientRect().width);
-      if (w > 0) setMeasuredW(w);
-    };
-    update();
-    if (typeof ResizeObserver !== "undefined") {
-      const ro = new ResizeObserver(update);
-      ro.observe(el);
-      return () => ro.disconnect();
-    }
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
-  const W = measuredW;
-  const H = Math.round(Math.min(300, Math.max(200, W * 0.42)));
-  const PAD_X = 20;
-  const PAD_T = 16;
-  const PAD_B = 24;
-  const plotW = W - PAD_X * 2;
-  const plotH = H - PAD_T - PAD_B;
-  // Stacked totals: positive stack is Revenue + Wages + positive
-  // Profit; a negative Profit sits below zero on its own.
-  const stackedTotals = months.map((m) => {
-    const positiveProfit = m.profit > 0 ? m.profit : 0;
-    return {
-      month: m.month,
-      positiveTotal: m.revenue + m.wages + positiveProfit,
-      negativeProfit: m.profit < 0 ? m.profit : 0,
-    };
-  });
-  const maxValue = Math.max(1, ...stackedTotals.map((t) => t.positiveTotal));
-  const minV = Math.min(0, ...stackedTotals.map((t) => t.negativeProfit));
-  const span = maxValue - minV || 1;
-  // Bars are evenly spaced across the plot (centred slots), not spread
-  // point-to-point like a line chart, so first/last bars don't clip.
-  const slotW = plotW / Math.max(1, months.length);
-  const px = (i: number) => PAD_X + slotW * (i + 0.5);
-  const py = (v: number) => PAD_T + (1 - (v - minV) / span) * plotH;
-  const barW = Math.max(4, Math.min(56, slotW * 0.62));
-
-  // Build every segment as a rect in value space, then convert.
-  interface Segment {
-    id: string;
-    monthIdx: number;
-    key: SeriesKey;
-    value: number;
-    from: number; // value at bottom of segment
-    to: number; // value at top of segment
-    color: string;
-  }
-  const segments: Segment[] = [];
-  months.forEach((m, mi) => {
-    // Revenue — bottom
-    if (m.revenue !== 0) {
-      segments.push({
-        id: `${m.month}:revenue`,
-        monthIdx: mi,
-        key: "revenue",
-        value: m.revenue,
-        from: 0,
-        to: m.revenue,
-        color: "#ae8a3e",
-      });
-    }
-    // Wages — stacked on Revenue
-    if (m.wages !== 0) {
-      segments.push({
-        id: `${m.month}:wages`,
-        monthIdx: mi,
-        key: "wages",
-        value: m.wages,
-        from: m.revenue,
-        to: m.revenue + m.wages,
-        color: "#7c4a72",
-      });
-    }
-    // Profit — on top when positive, below zero when negative
-    if (m.profit > 0) {
-      const base = m.revenue + m.wages;
-      segments.push({
-        id: `${m.month}:profit`,
-        monthIdx: mi,
-        key: "profit",
-        value: m.profit,
-        from: base,
-        to: base + m.profit,
-        color: "#4a6b53",
-      });
-    } else if (m.profit < 0) {
-      segments.push({
-        id: `${m.month}:profit`,
-        monthIdx: mi,
-        key: "profit",
-        value: m.profit,
-        from: m.profit,
-        to: 0,
-        color: NEGATIVE_PROFIT,
-      });
-    }
-  });
-
-  // Labels: cream pill centred inside the segment, only when the
-  // Numbers switch is on and the segment is tall enough (≥22px) to
-  // hold one legibly.
-  const labels = (showNumbers ? segments : [])
-    .filter((s) => {
-      const h = Math.abs(py(s.to) - py(s.from));
-      return s.value !== 0 && h >= 22;
-    })
-    .map((s) => {
-      const topY = py(Math.max(s.from, s.to));
-      const bottomY = py(Math.min(s.from, s.to));
-      const cy = (topY + bottomY) / 2;
-      return {
-        id: s.id,
-        x: px(s.monthIdx),
-        y: cy + 3.5,
-        pillY: cy - 7.5,
-        text: chartMoney(s.value, symbol),
-      };
-    });
-
-  // Show as many month labels as fit without crowding: ~52px per
-  // full "Jan 25" label on wide charts, ~36px per short label on narrow.
-  const wide = W >= 640;
-  const labelEveryPx = wide ? 56 : 38;
-  const maxMonthLabels = Math.max(2, Math.floor(plotW / labelEveryPx));
-  const monthStep = Math.max(1, Math.ceil(months.length / maxMonthLabels));
-
-  return (
-    <div ref={wrapRef} className="w-full">
-    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="block max-w-full" aria-hidden="true">
-      {selectedMonth
-        ? months.map((m, mi) =>
-            m.month === selectedMonth ? (
-              <rect
-                key={`sel-${m.month}`}
-                x={PAD_X + slotW * mi + 2}
-                y={PAD_T - 6}
-                width={Math.max(0, slotW - 4)}
-                height={plotH + 12}
-                rx={6}
-                fill="var(--surface-alt)"
-              />
-            ) : null,
-          )
-        : null}
-      <line
-        x1={PAD_X}
-        x2={W - PAD_X}
-        y1={py(minV)}
-        y2={py(minV)}
-        stroke="var(--border)"
-        strokeWidth="1"
-      />
-      {minV < 0 ? (
-        <line
-          x1={PAD_X}
-          x2={W - PAD_X}
-          y1={py(0)}
-          y2={py(0)}
-          stroke="var(--border)"
-          strokeWidth="1"
-          strokeDasharray="3 3"
-        />
-      ) : null}
-      {segments.map((s) => {
-        const topY = py(Math.max(s.from, s.to));
-        const bottomY = py(Math.min(s.from, s.to));
-        const h = Math.max(0, bottomY - topY);
-        // Round only the outer ends of the stack: top of the topmost
-        // positive segment and bottom of the bottommost segment.
-        const isTopPositive =
-          s.to >= s.from &&
-          s.to ===
-            Math.max(
-              ...segments
-                .filter((x) => x.monthIdx === s.monthIdx && x.to > x.from)
-                .map((x) => x.to),
-              s.to,
-            );
-        const isBottom = s.from === 0 && s.key === "revenue";
-        const isNegativeBottom = s.value < 0;
-        const rx = isTopPositive || isBottom || isNegativeBottom ? 3 : 0;
-        return (
-          <rect
-            key={s.id}
-            x={px(s.monthIdx) - barW / 2}
-            y={topY}
-            width={barW}
-            height={h}
-            rx={rx}
-            fill={s.color}
-            fillOpacity="0.92"
-            stroke="#fffdf9"
-            strokeWidth={h > 2 ? 1 : 0}
-          />
-        );
-      })}
-      {labels.map((l) => {
-        const pillW = l.text.length * 5.6 + 12;
-        // Clamp the pill inside the chart horizontally.
-        const cx = Math.min(Math.max(l.x, pillW / 2 + 2), W - pillW / 2 - 2);
-        return (
-          <g key={l.id}>
-            <rect
-              x={cx - pillW / 2}
-              y={l.pillY}
-              width={pillW}
-              height={15}
-              rx={7.5}
-              fill="#fffdf9"
-              stroke="var(--border)"
-              strokeWidth="1"
-            />
-            <text
-              x={cx}
-              y={l.y}
-              textAnchor="middle"
-              fontSize="10"
-              className="font-mono"
-              style={{ fill: "#2c1e16" }}
-            >
-              {l.text}
-            </text>
-          </g>
-        );
-      })}
-      {months.map((m, mi) =>
-        mi % monthStep === 0 ? (
-          <text
-            key={m.month}
-            x={px(mi)}
-            y={H - 8}
-            textAnchor="middle"
-            fontSize="10"
-            fontWeight={m.month === selectedMonth ? "800" : "600"}
-            style={{ fill: m.month === selectedMonth ? "#2c1e16" : "var(--dim)" }}
-          >
-            {wide ? monthLabel(m.month) : monthShort(m.month)}
-          </text>
-        ) : null,
-      )}
-      {/* Full-slot click targets, one per month, above everything so a
-          click anywhere in a month's column selects it. */}
-      {months.map((m, mi) => (
-        <rect
-          key={`hit-${m.month}`}
-          x={PAD_X + slotW * mi}
-          y={0}
-          width={slotW}
-          height={H}
-          fill="transparent"
-          style={{ cursor: "pointer" }}
-          onClick={() => onSelect(m.month)}
-        />
-      ))}
-    </svg>
-    </div>
-  );
-}
-
-/**
- * Phone layout for the monthly figures: a vertical list with one
+ * The monthly figures at every width: a vertical list with one
  * entry per month that actually has sales (empty months are skipped
  * entirely, so real bars never get squeezed by blank slots). Each
  * entry is the month name, a horizontal stacked bar (Revenue gold →
  * Wages plum → Profit green; a negative profit is a red segment
  * extending left of the zero point), and one small line with the
- * three figures as plain text — no labels sit on the bars, so
- * nothing can overlap. The list simply grows downward as more
- * months accumulate.
+ * three figures as plain text, always visible — no labels sit on
+ * the bars, so nothing can overlap. The list simply grows downward
+ * as more months accumulate.
  */
-function PhoneMonthList({
+function MonthList({
   months,
   symbol,
 }: {
@@ -464,15 +171,6 @@ function monthLabel(month: string): string {
   });
 }
 
-/** Short month name only ("Jan") — used under the chart on
- *  narrow widths, where the full "Jan 25" label would crowd. */
-function monthShort(month: string): string {
-  const [y = 1970, m = 1] = month.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString("en-CA", {
-    month: "short",
-  });
-}
-
 function currentMonthKey(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -554,13 +252,12 @@ export function DashboardPage({
     queryFn: () => api.salesSummary({}),
   });
   const [frame, setFrame] = useState<Frame>("all");
-  // Desktop chart: value labels are off until she flips Numbers on.
-  const [showNumbers, setShowNumbers] = useState(false);
-  // Month chosen by tapping/clicking a desktop bar; its figures show
-  // in the readout line under the chart. Tapping it again clears it.
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-  const toggleSelectedMonth = (month: string) =>
-    setSelectedMonth((cur) => (cur === month ? null : month));
+  // The monthly breakdown stays tucked away until she taps its
+  // header open — the totals and Insights are the everyday view.
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
+  // On phones the Insights card is likewise collapsed behind its
+  // header until tapped open; on desktop it always shows.
+  const [insightsOpen, setInsightsOpen] = useState(false);
   const [customFrom, setCustomFrom] = useState(
     () => `${new Date().getFullYear()}-01-01`,
   );
@@ -749,105 +446,37 @@ export function DashboardPage({
           </div>
 
           <div className={`${cardCls} mt-4 p-4 sm:p-6`}>
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-              <div
-                className="flex flex-wrap gap-x-5 gap-y-2"
-                aria-label="Chart legend"
-              >
-                {STACK_SERIES.map((s) => (
-                  <span
-                    key={s.key}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-[#2c1e16]"
-                  >
-                    <span
-                      className="inline-block w-2.5 h-2.5 rounded-sm"
-                      style={{ backgroundColor: s.color }}
-                      aria-hidden="true"
-                    />
-                    {s.label}
-                  </span>
-                ))}
-              </div>
-              {/* Desktop only: the phone list always prints its figures
-                  as text, so it needs no switch. */}
+            <h2>
               <button
                 type="button"
-                role="switch"
-                aria-checked={showNumbers}
-                onClick={() => setShowNumbers((v) => !v)}
-                className="ml-auto hidden items-center gap-2 text-xs font-semibold text-[#2c1e16] lg:inline-flex"
+                aria-expanded={insightsOpen}
+                aria-controls="insights-body"
+                onClick={() => setInsightsOpen((v) => !v)}
+                className="flex w-full flex-wrap items-baseline gap-x-3 gap-y-1 text-left lg:pointer-events-none"
               >
+                <span className="font-heading text-xl font-medium text-[#2c1e16]">
+                  Insights
+                </span>
                 <span
-                  className={`relative inline-block h-5 w-9 shrink-0 rounded-full transition-colors ${
-                    showNumbers ? "bg-[#2c1e16]" : "bg-[var(--border)]"
+                  className={`ml-auto inline-flex shrink-0 self-center text-[var(--dim)] transition-transform lg:hidden ${
+                    insightsOpen ? "rotate-90" : ""
                   }`}
                   aria-hidden="true"
                 >
-                  <span
-                    className={`absolute top-0.5 h-4 w-4 rounded-full bg-[#fffdf9] shadow transition-all ${
-                      showNumbers ? "left-[18px]" : "left-0.5"
-                    }`}
-                  />
+                  <IconChevronRight />
                 </span>
-                Numbers
               </button>
-            </div>
-
-            {/* Phone: horizontal stacked bars, one per month with
-                sales, figures as a text line under each bar. */}
-            <div className="mt-2 lg:hidden">
-              <PhoneMonthList months={months} symbol={symbol} />
-            </div>
-
-            {/* Desktop: vertical stacked bars. */}
+            </h2>
             <div
-              className="mt-2 hidden w-full lg:block"
-              role="img"
-              aria-label={`Monthly stacked bar chart, ${caption}: ${months
-                .map(
-                  (m) =>
-                    `${monthLabel(m.month)} — ${STACK_SERIES.map(
-                      (s) => `${s.label.toLowerCase()} ${money(m[s.key], symbol)}`,
-                    ).join(", ")}`,
-                )
-                .join("; ")}`}
+              id="insights-body"
+              className={insightsOpen ? "" : "hidden lg:block"}
             >
-              <StackedBarChart
-                months={months}
-                symbol={symbol}
-                showNumbers={showNumbers}
-                selectedMonth={selectedMonth}
-                onSelect={toggleSelectedMonth}
-              />
-            </div>
-
-            {(() => {
-              const sel = selectedMonth
-                ? months.find((m) => m.month === selectedMonth)
-                : undefined;
-              return sel ? (
-                <p className="mt-3 hidden border-t border-[var(--border)] pt-3 font-mono text-xs text-[#2c1e16] lg:block">
-                  {monthLabel(sel.month)} — Revenue{" "}
-                  {chartMoney(sel.revenue, symbol)} · Wages{" "}
-                  {chartMoney(sel.wages, symbol)} · Profit{" "}
-                  {chartMoney(sel.profit, symbol)}
-                </p>
-              ) : null;
-            })()}
-          </div>
-
-          <div className={`${cardCls} mt-4 p-4 sm:p-6`}>
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <h2 className="font-heading text-xl font-medium text-[#2c1e16]">
-                Insights
-              </h2>
-              <p className="text-xs text-[var(--dim)]">{caption}</p>
-            </div>
             {insightsQ.isPending ? (
               <p className="mt-4 text-sm text-[var(--dim)]">Loading…</p>
             ) : insights &&
               (insights.top_item ||
-                insights.top_buyer ||
+                insights.top_customer ||
+                insights.top_event ||
                 insights.highest_margin ||
                 insights.lowest_margin) ? (
               <dl className="mt-2 divide-y divide-[var(--border)]">
@@ -864,16 +493,30 @@ export function DashboardPage({
                     </dd>
                   </div>
                 ) : null}
-                {insights.top_buyer ? (
+                {insights.top_customer ? (
                   <div className="flex flex-col gap-1.5 py-4 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4 sm:py-2.5">
-                    <dt className={microLabel}>Top buyer</dt>
+                    <dt className={microLabel}>Top customer</dt>
                     <dd className="text-sm font-medium text-[#2c1e16] text-left min-w-0 sm:text-right">
-                      {insights.top_buyer.customer_name}
+                      {insights.top_customer.customer_name}
                       <span className="text-[var(--dim)] font-normal">
                         {" "}
-                        — {money(insights.top_buyer.spent, symbol)} ·{" "}
-                        {insights.top_buyer.orders} order
-                        {insights.top_buyer.orders === 1 ? "" : "s"}
+                        — {money(insights.top_customer.spent, symbol)} ·{" "}
+                        {insights.top_customer.orders} order
+                        {insights.top_customer.orders === 1 ? "" : "s"}
+                      </span>
+                    </dd>
+                  </div>
+                ) : null}
+                {insights.top_event ? (
+                  <div className="flex flex-col gap-1.5 py-4 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4 sm:py-2.5">
+                    <dt className={microLabel}>Top event</dt>
+                    <dd className="text-sm font-medium text-[#2c1e16] text-left min-w-0 sm:text-right">
+                      {insights.top_event.event_name}
+                      <span className="text-[var(--dim)] font-normal">
+                        {" "}
+                        — {money(insights.top_event.spent, symbol)} ·{" "}
+                        {insights.top_event.orders} order
+                        {insights.top_event.orders === 1 ? "" : "s"}
                       </span>
                     </dd>
                   </div>
@@ -916,6 +559,56 @@ export function DashboardPage({
                 No sales in this period yet.
               </p>
             )}
+            </div>
+          </div>
+
+          <div className={`${cardCls} mt-4 p-4 sm:p-6`}>
+            <h2>
+              <button
+                type="button"
+                aria-expanded={breakdownOpen}
+                aria-controls="monthly-breakdown"
+                onClick={() => setBreakdownOpen((v) => !v)}
+                className="flex w-full items-center gap-3 text-left"
+              >
+                <span className="font-heading text-xl font-medium text-[#2c1e16]">
+                  Monthly breakdown
+                </span>
+                <span
+                  className={`ml-auto inline-flex shrink-0 text-[var(--dim)] transition-transform ${
+                    breakdownOpen ? "rotate-90" : ""
+                  }`}
+                  aria-hidden="true"
+                >
+                  <IconChevronRight />
+                </span>
+              </button>
+            </h2>
+            {breakdownOpen ? (
+              <div id="monthly-breakdown">
+                <div
+                  className="mt-4 flex flex-wrap gap-x-5 gap-y-2"
+                  aria-label="Chart legend"
+                >
+                  {STACK_SERIES.map((s) => (
+                    <span
+                      key={s.key}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-[#2c1e16]"
+                    >
+                      <span
+                        className="inline-block w-2.5 h-2.5 rounded-sm"
+                        style={{ backgroundColor: s.color }}
+                        aria-hidden="true"
+                      />
+                      {s.label}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-2">
+                  <MonthList months={months} symbol={symbol} />
+                </div>
+              </div>
+            ) : null}
           </div>
         </>
       )}

@@ -11,44 +11,48 @@ inputCls,
 Loading,
 useToast,
 } from "../ui";
-import { BackupTab, UploadTab } from "./Import";
+import { DataTab } from "./Import";
 
-export type SettingsTab = "costs" | "backup" | "upload" | "chat";
+export type SettingsTab = "costs" | "data" | "chat";
 
 const TABS: { id: SettingsTab; label: string }[] = [
   { id: "costs", label: "Costs" },
-  { id: "backup", label: "Backup" },
-  { id: "upload", label: "Upload" },
+  { id: "data", label: "Data" },
   { id: "chat", label: "Chat setup" },
 ];
 
-const CHAT_INSTRUCTIONS = `Remember this for the Shadow Cakes pricing tool — these are standing rules:
+const CHAT_INSTRUCTIONS = `SHADOW CAKES — WORKING NOTES
+You help run the Shadow Cakes Pricing Tool (the shared space in this app). It tracks ingredient prices, recipes and what they cost to make, packaging, components, sales, and price quotes. All money is CAD. When I ask you to change data, use the tool itself — never keep a separate list.
 
-LOGGING PRICES FROM PHOTOS
-When I send a photo of a price tag, product, or receipt:
-1. Read the item name, brand, store, total price, and package size.
-2. Repeat back to me exactly what you are about to log — one line, in the format below — and wait for my yes before logging anything.
-3. Log it as a price for that ingredient in the Shadow Cakes tool: if the ingredient already exists, add it as the newest price; if it is new, create the ingredient and its first price.
-4. If anything is unreadable or missing, ask me — never guess a price, size, or brand.
+FORMATTING
+- Anything you write into the tool — ingredient prices, recipes, sales, packaging — must match the back-end upload-sheet formats exactly (same fields and conventions: dates as YYYY-MM-DD, units g/ml/piece, package size as the total amount, brand as the exact name only, sales marked Customer or Event), so chat-entered data and sheet-imported data are identical in shape.
 
-FORMAT — match my spreadsheet exactly:
-- Ingredient: the product name as printed (for example, "Nutella Peanut Spread")
-- Store: the store name only (Costco, No Frills, Amazon…)
-- Price: the total price paid, as a plain number (4.97)
-- Package size: the TOTAL amount, as a number — a multi-pack counts as its total (2 × 26.5 oz = 1,502.5)
-- Unit: g, ml, or piece — convert ounces to grams (1 oz = 28.35 g)
-- Date: YYYY-MM-DD
-- Brand: the exact brand name only, or blank if there is none — no other words in this field
+LOGGING AN INGREDIENT PRICE
+- I will usually send a photo of a store shelf tag or a receipt. Read it, then ask me about anything you can't be sure of — most often the total package size, the brand, and whether the price is for the whole package. Don't guess on those.
+- I may also just type a price ("butter $6.96 at Costco"). Treat it the same way.
+- Before saving, repeat back one line and wait for my yes: ingredient · store · price · total package size + unit · brand · date (today unless I say otherwise). Example: "Nutella Peanut Spread · Costco · $4.97 · 1502.5 g · Nutella · today".
+- Format: store name only; price as a plain number; package size is the TOTAL amount in the package; unit is g, ml, or piece; convert oz to g (× 28.35). The brand is the exact brand name only — no pack details; leave it blank if there is none.
+- Tax: shelf prices don't include tax. Add 13% HST only for taxable items (prepared foods, candy and confectionery, drinks, and non-food like packaging). Ontario basic groceries are tax-free. Receipts already include tax — never add it twice. In your confirmation line, show the shelf price, whether tax applies, and the total you'll log. If you're not sure an item is taxable, ask me in that line.
+- Units: if the unit I give doesn't match how the ingredient is already recorded (for example, eggs by the piece vs by grams), stop and ask — never mix units on one ingredient.
+- New ingredient: if it isn't in the tool yet, confirm the spelling of its name with me before creating it.
 
-Repeat-back example: "Nutella Peanut Spread · Costco · $4.97 · 1,502.5 g · 2026-11-22 · Brand: Nutella — log it?"
+LOGGING A SALE
+- Confirm: cake and size, whether it's a customer or an event, the name (customer first name, last name optional; or the event name), the price, and the date (today unless I say otherwise). Log only after my yes.
 
-TAX: Store shelf prices don't include tax. When you log a price from a store photo, show it in your confirmation line: the shelf price, whether tax applies, and the total you'll log — e.g. "…$4.97 + 13% tax = $5.62". Add 13% HST only for taxable items (prepared foods, candy/confectionery, drinks, non-food items like packaging). Basic grocery staples are tax-free in Ontario — log those at the shelf price. If the photo is a receipt, the tax is already in — never add it twice. If you're unsure whether an item is taxable, ask her in the confirmation line.
+QUESTIONS ABOUT THE DATA
+- Answer from the tool only. If I ask what something costs to make or what sold best, look it up, and name the date behind any price you quote. If the tool doesn't have it, say so — don't estimate.
 
-LOGGING SALES
-When I tell you about a sale in chat, repeat back one line first — cake and size, customer first and last name (both are required), price, and date (today unless I say otherwise) — and log it only after I say yes.
+RECIPES
+- Recipe costs update on their own when prices change.
+- New variant from an existing one (e.g. a recipe for 30 cookies → 15): scale every ingredient quantity by the ratio. Packaging counted per item (liners, bags) scales too; a box stays at 1 unless I say otherwise. Prep and utility times stay the same unless I give new ones. Name the variant by its new size, show me the full scaled list, and save only after my yes.
+- New recipe: read it back to me line by line before saving, and confirm the spelling of any new ingredient, component, or packaging names.
 
-GENERAL
-Prices I type in chat without a photo follow the same rules. Never edit or delete existing records unless I ask. When a new price is logged, recipe costs update on their own — I never need to change a recipe because a price changed.`;
+QUOTES
+- If I ask you to build a quote, add the items at their suggested prices, tell me what you added, and I'll preview and share it from the Quote page myself.
+
+CORRECTIONS AND DELETIONS
+- If I say something was logged wrong, show me the record before and after your fix, and wait for my yes.
+- Never delete or overwrite a record unless I explicitly ask.`;
 
 export function SettingsPage({
   tab,
@@ -63,17 +67,7 @@ export function SettingsPage({
       <h1 className="font-heading text-3xl sm:text-4xl font-light tracking-tight text-[#1a1a1a]">
         Settings
       </h1>
-      <p className="text-sm text-[var(--dim)] mt-1">
-        {tab === "costs"
-          ? "Configure labour and utility rates and your target margin"
-          : tab === "backup"
-            ? "Download everything as one workbook"
-            : tab === "upload"
-              ? "Import a workbook or individual spreadsheets"
-              : "Standing instructions for your Muse chat"}
-      </p>
-
-      {/* All four tabs stay on ONE line at every width — no wrapping;
+      {/* All three tabs stay on ONE line at every width — no wrapping;
           the pills shrink their font and padding on phones to fit. */}
       <div
         className="mt-5 flex flex-nowrap items-center gap-1.5 sm:gap-2"
@@ -108,13 +102,9 @@ export function SettingsPage({
             <SettingsForm key={JSON.stringify(q.data)} initial={q.data} />
           ) : null}
         </div>
-      ) : tab === "backup" ? (
+      ) : tab === "data" ? (
         <div className="mt-6">
-          <BackupTab />
-        </div>
-      ) : tab === "upload" ? (
-        <div className="mt-6">
-          <UploadTab />
+          <DataTab />
         </div>
       ) : (
         <div className="mt-6">
@@ -153,15 +143,8 @@ function ChatSetupTab() {
 
   return (
     <div className="max-w-2xl">
-      <p className="text-sm text-[var(--dim)]">
-        Paste this into your Muse chat once — it will remember how to log
-        prices and sales for this tool.
-      </p>
-      <div className={`${cardCls} mt-4 p-5 sm:p-6`}>
-        <pre className="whitespace-pre-wrap font-body text-sm leading-relaxed text-[var(--text)]">
-          {CHAT_INSTRUCTIONS}
-        </pre>
-        <div className="mt-5 flex justify-end">
+      <div className={`${cardCls} p-5 sm:p-6`}>
+        <div className="mb-5 flex justify-end">
           <button
             type="button"
             onClick={copy}
@@ -171,6 +154,9 @@ function ChatSetupTab() {
             {copied ? "Copied" : "Copy"}
           </button>
         </div>
+        <pre className="whitespace-pre-wrap font-body text-sm leading-relaxed text-[var(--text)]">
+          {CHAT_INSTRUCTIONS}
+        </pre>
       </div>
     </div>
   );
@@ -245,10 +231,6 @@ function SettingsForm({ initial }: { initial: Settings }) {
       }}
       className={`${cardCls} p-5 sm:p-6 space-y-5`}
     >
-      <p className="text-sm text-[var(--dim)] bg-[var(--surface-alt)] rounded-md px-4 py-3">
-        These rates are used to calculate labour and utility costs in recipes —
-        labour and utilities are charged on each variant's prep time.
-      </p>
       <div className="grid grid-cols-2 gap-4">
         <Field label="Currency">
           <input
@@ -294,11 +276,6 @@ function SettingsForm({ initial }: { initial: Settings }) {
           />
         </Field>
       </div>
-      <p className="text-sm text-[var(--dim)]">
-        Each recipe variant shows a suggested price — what to charge to hit
-        this margin on its current cost. It updates on its own whenever an
-        ingredient price changes.
-      </p>
       {error ? (
         <p role="alert" className="text-sm text-[#a63c3c]">
           {error}

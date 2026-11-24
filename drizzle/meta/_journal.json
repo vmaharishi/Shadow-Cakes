@@ -92,6 +92,13 @@
       "when": 1795401802682,
       "tag": "0013_add_quote_footer_text",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1795484096924,
+      "tag": "0014_add_sale_type_mark_farmers_market_events",
+      "breakpoints": true
     }
   ]
 }
